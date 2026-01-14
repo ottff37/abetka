@@ -310,11 +310,14 @@ if (typeof document !== 'undefined') {
         flex-direction: row !important;
         align-items: center !important;
         gap: 8px !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
       }
       
       .mobile-input-group input {
         flex: 1 !important;
         width: auto !important;
+        min-width: 0 !important;
       }
       
       .mobile-flex-column button {
@@ -638,14 +641,6 @@ const ConjugationTable = ({ conjugation, word }) => {
 
 // Основной компонент приложения
 export default function FrenchFlashCardsApp() {
-  const [apiKey, setApiKey] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('gemini_api_key') || '';
-    }
-    return '';
-  });
-  const [tempApiKey, setTempApiKey] = useState('');
-  const [showApiKeyModal, setShowApiKeyModal] = useState(!apiKey);
   const [topics, setTopics] = useState([]);
   const [currentTopic, setCurrentTopic] = useState(null);
   const [newTopicName, setNewTopicName] = useState('');
@@ -714,62 +709,30 @@ export default function FrenchFlashCardsApp() {
 
   // ========== API CONFIG ==========
 
-  const saveApiKey = (key) => {
-    setApiKey(key);
-    setTempApiKey(key);
-    localStorage.setItem('gemini_api_key', key);
-    setShowApiKeyModal(false);
-  };
-
-  const clearApiKey = () => {
-    setApiKey('');
-    setTempApiKey('');
-    localStorage.removeItem('gemini_api_key');
-    setShowApiKeyModal(true);
-  };
-
-  // Helper функция для запроса к Gemini API
+  // Helper функция для запроса к Claude API напрямую
   const callGeminiAPI = async (prompt) => {
-    if (!apiKey) {
-      const error = 'API key not set. Please provide your Gemini API key.';
-      addNotification(setErrors, error);
-      throw new Error(error);
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        messages: [
+          { role: 'user', content: prompt }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || `API error: ${response.status}`);
     }
 
-    try {
-      console.log('📡 Sending request to Gemini API with key:', apiKey.substring(0, 10) + '...');
-      
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
-      });
-
-      console.log('📊 Response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMsg = errorData.error?.message || `API error: ${response.status}`;
-        console.error('❌ API Error:', errorMsg);
-        throw new Error(errorMsg);
-      }
-
-      const data = await response.json();
-      console.log('✅ Response received:', data);
-      return data.candidates[0].content.parts[0].text;
-    } catch (error) {
-      console.error('🔴 Fetch Error:', error);
-      addNotification(setErrors, `API Error: ${error.message}`);
-      throw error;
-    }
+    const data = await response.json();
+    return data.content[0].text;
   };
 
   // ========== NOTIFICATION HELPERS ==========
@@ -1645,6 +1608,7 @@ export default function FrenchFlashCardsApp() {
                     placeholder="Type a topic name"
                     style={{ 
                       flex: 1,
+                      minWidth: 0,
                       height: '56px',
                       padding: '0 20px',
                       border: '1.5px solid rgba(0, 0, 0, 0.12)',
@@ -1724,6 +1688,7 @@ export default function FrenchFlashCardsApp() {
                 color: 'rgba(0, 0, 0, 0.5)',
                 pointerEvents: 'auto',
                 cursor: 'pointer',
+                textAlign: 'center',
               }}>
                 Drag and drop your .json file
               </span>
@@ -1903,152 +1868,6 @@ export default function FrenchFlashCardsApp() {
         }
       `}</style>
 
-      {/* API Key Modal */}
-      {showApiKeyModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2000,
-        }}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '24px',
-            width: '520px',
-            padding: '48px 32px',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            maxHeight: '80vh',
-            overflowY: 'auto'
-          }}>
-            <h2 style={{
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '24px',
-              fontWeight: '600',
-              marginBottom: '16px',
-              color: '#000000'
-            }}>
-              🔑 Gemini API Key
-            </h2>
-            <p style={{
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '14px',
-              color: 'rgba(0, 0, 0, 0.6)',
-              marginBottom: '24px',
-              lineHeight: '20px'
-            }}>
-              Этому приложению нужен Gemini API ключ для перевода слов и грамматического анализа. 
-              Получи бесплатный ключ за 2 минуты:
-            </p>
-            
-            <div style={{
-              backgroundColor: '#f5f5f5',
-              border: '1px solid #ddd',
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '24px',
-              fontSize: '13px',
-              lineHeight: '20px',
-              color: 'rgba(0, 0, 0, 0.7)',
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-            }}>
-              <strong>Как получить ключ:</strong>
-              <ol style={{ marginTop: '8px', paddingLeft: '20px', margin: '8px 0 0 0' }}>
-                <li>Перейди на <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>Google AI Studio</a></li>
-                <li>Нажми "Create API Key"</li>
-                <li>Выбери свой проект (или создай новый)</li>
-                <li>Скопируй ключ, который начинается с "AIza..."</li>
-                <li>Вставь его ниже и нажми "Save"</li>
-              </ol>
-            </div>
-
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#000000',
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-            }}>
-              API Key (начинается с AIza...)
-            </label>
-            <input
-              type="password"
-              placeholder="AIzaSyD..."
-              value={tempApiKey}
-              onChange={(e) => setTempApiKey(e.target.value)}
-              autoFocus
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                marginBottom: '24px',
-                border: '1.5px solid rgba(0, 0, 0, 0.08)',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                boxSizing: 'border-box'
-              }}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && tempApiKey.trim()) {
-                  saveApiKey(tempApiKey);
-                }
-              }}
-            />
-            
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={() => saveApiKey(tempApiKey)}
-                disabled={!tempApiKey.trim()}
-                style={{
-                  flex: 1,
-                  padding: '12px 16px',
-                  backgroundColor: tempApiKey.trim() ? '#000000' : '#D1D0CE',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: tempApiKey.trim() ? 'pointer' : 'not-allowed',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Save API Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* API Key Display Button */}
-      {apiKey && (
-        <button
-          onClick={clearApiKey}
-          style={{
-            position: 'fixed',
-            top: '24px',
-            right: '24px',
-            padding: '8px 12px',
-            backgroundColor: '#EEEAEA',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            cursor: 'pointer',
-            zIndex: 100,
-            transition: 'all 0.3s ease'
-          }}
-          title="Click to change API key"
-        >
-          🔑 API Key (click to change)
-        </button>
-      )}
-
       {/* Celebration Modal */}
       {showCelebrationModal && (
         <div style={{
@@ -2129,23 +1948,31 @@ export default function FrenchFlashCardsApp() {
       )}
       
       {/* Error Toast Stack */}
-      <div style={{ position: 'fixed', bottom: '48px', left: 0, right: 0, zIndex: 1000, pointerEvents: 'none' }}>
+      <div style={{ 
+        position: 'fixed', 
+        bottom: '16px', 
+        left: 0, 
+        right: 0, 
+        zIndex: 1000, 
+        pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column-reverse',
+        gap: '12px',
+        alignItems: 'center',
+        padding: '0 16px',
+        boxSizing: 'border-box'
+      }}>
         {errors.map((error, index) => (
           <div
             key={error.id}
             style={{
-              position: 'fixed',
-              bottom: `${16 + index * 68}px`,
-              left: 0,
-              right: 0,
               width: '512px',
               maxWidth: 'calc(100% - 32px)',
-              margin: '0 auto',
               padding: '16px 20px',
               backgroundColor: '#fee2e2',
               borderRadius: '12px',
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               justifyContent: 'space-between',
               gap: '12px',
               boxSizing: 'border-box',
@@ -2196,23 +2023,31 @@ export default function FrenchFlashCardsApp() {
       </div>
 
       {/* Success Toast Stack */}
-      <div style={{ position: 'fixed', bottom: '48px', left: 0, right: 0, zIndex: 1000, pointerEvents: 'none' }}>
+      <div style={{ 
+        position: 'fixed', 
+        bottom: '16px', 
+        left: 0, 
+        right: 0, 
+        zIndex: 1000, 
+        pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column-reverse',
+        gap: '12px',
+        alignItems: 'center',
+        padding: '0 16px',
+        boxSizing: 'border-box'
+      }}>
         {successes.map((success, index) => (
           <div
             key={success.id}
             style={{
-              position: 'fixed',
-              bottom: `${16 + index * 68}px`,
-              left: 0,
-              right: 0,
               width: '512px',
               maxWidth: 'calc(100% - 32px)',
-              margin: '0 auto',
               padding: '16px 20px',
               backgroundColor: '#dcfce7',
               borderRadius: '12px',
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               justifyContent: 'space-between',
               gap: '12px',
               boxSizing: 'border-box',
@@ -2373,6 +2208,7 @@ export default function FrenchFlashCardsApp() {
                   </div>
                   <div style={{
                     flex: 1,
+                    minWidth: 0,
                     height: '56px',
                     padding: '0 20px',
                     borderRadius: '12px',
@@ -2398,6 +2234,7 @@ export default function FrenchFlashCardsApp() {
                       placeholder="Type French or Russian word..."
                       style={{
                         flex: 1,
+                        minWidth: 0,
                         border: 'none',
                         fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                         fontSize: '16px',
