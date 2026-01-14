@@ -3038,6 +3038,7 @@ export default function FrenchFlashCardsApp() {
                   transform: `translateX(calc(${-currentCardIndex * 100}% + ${slideOffset}px))`,
                   transitionDuration: isDragging ? '0ms' : '300ms',
                   transitionTimingFunction: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
+                  gap: '16px',
                 }}
               >
                 {cards.map((card, idx) => (
