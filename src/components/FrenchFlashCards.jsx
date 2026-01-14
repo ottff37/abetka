@@ -530,11 +530,13 @@ if (typeof document !== 'undefined') {
       white-space: nowrap;
       display: block;
       margin: 0;
+      transform: translateX(0);
     }
     
     .topic-title-marquee.animate {
       display: inline-block;
       animation: marquee var(--animation-duration, 20s) linear infinite;
+      will-change: transform;
     }
     
     /* Delete button styles */
@@ -926,7 +928,6 @@ export default function FrenchFlashCardsApp() {
         element.offsetHeight;
         
         if (element.scrollWidth > container.clientWidth) {
-          element.classList.add('animate');
           setShouldDuplicateTitle(true);
           
           // Calculate animation duration based on text width
@@ -934,6 +935,12 @@ export default function FrenchFlashCardsApp() {
           const textWidth = element.scrollWidth;
           const duration = Math.max(5, textWidth / 60); // minimum 5 seconds
           setAnimationDuration(duration);
+          
+          // Add small delay to ensure rendering is complete before animation starts
+          // This prevents jitter on first open
+          setTimeout(() => {
+            element.classList.add('animate');
+          }, 50);
         } else {
           element.classList.remove('animate');
           setShouldDuplicateTitle(false);
@@ -941,11 +948,14 @@ export default function FrenchFlashCardsApp() {
         }
       };
       
-      // Check immediately
-      checkOverflow();
+      // Check immediately with requestAnimationFrame for better timing
+      requestAnimationFrame(() => checkOverflow());
       
-      // Check after a small delay for DOM to fully render
-      const timeoutId = setTimeout(checkOverflow, 100);
+      // Add animation class with small delay to prevent jitter on first open
+      // This ensures element is fully rendered before animation starts
+      const timeoutId = setTimeout(() => {
+        checkOverflow();
+      }, 100);
       
       // Also check on window resize
       window.addEventListener('resize', checkOverflow);
