@@ -511,7 +511,7 @@ if (typeof document !== 'undefined') {
     
     .topic-title-marquee.animate {
       display: inline-block;
-      animation: marquee 20s linear infinite;
+      animation: marquee var(--animation-duration, 20s) linear infinite;
     }
     
 `;
@@ -806,6 +806,7 @@ export default function FrenchFlashCardsApp() {
   const [cardLetterSpacing, setCardLetterSpacing] = useState('0');
   const [cardTextAlign, setCardTextAlign] = useState('center');
   const [shouldDuplicateTitle, setShouldDuplicateTitle] = useState(false);
+  const [animationDuration, setAnimationDuration] = useState(20);
   
   const inputRef = useRef(null);
   const topicTitleRef = useRef(null);
@@ -856,9 +857,16 @@ export default function FrenchFlashCardsApp() {
         if (element.scrollWidth > container.clientWidth) {
           element.classList.add('animate');
           setShouldDuplicateTitle(true);
+          
+          // Calculate animation duration based on text width
+          // 60px per second = smooth speed regardless of text length
+          const textWidth = element.scrollWidth;
+          const duration = Math.max(5, textWidth / 60); // minimum 5 seconds
+          setAnimationDuration(duration);
         } else {
           element.classList.remove('animate');
           setShouldDuplicateTitle(false);
+          setAnimationDuration(20);
         }
       };
       
@@ -2569,39 +2577,40 @@ export default function FrenchFlashCardsApp() {
           </div>
         </button>
       </div>
+      
+      {/* Marquee Container - Full Width */}
+      <div className="marquee-container" style={{ 
+        marginBottom: '0', 
+        marginTop: '120px',
+        width: '100vw',
+        marginLeft: 'calc(-50vw + 50%)',
+        overflow: 'hidden',
+      }}>
+        <h1 
+          ref={topicTitleRef}
+          className="topic-title-marquee text-black"
+          style={{
+            fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            fontSize: '42px',
+            fontWeight: '500',
+            lineHeight: '54px',
+            letterSpacing: '0',
+            textAlign: 'center',
+            padding: '0',
+            margin: '0',
+            '--animation-duration': `${animationDuration}s`,
+          }} 
+        >
+          {shouldDuplicateTitle ? (
+            <>
+              <span style={{ paddingRight: '20px' }}>{currentTopic.name}</span>
+              <span>{currentTopic.name}</span>
+            </>
+          ) : currentTopic.name}
+        </h1>
+      </div>
+
       <div className="max-w-4xl mx-auto flex flex-col items-center w-full">
-        {/* Заголовок */}
-        <div className="marquee-container" style={{ 
-          marginBottom: '0', 
-          marginTop: '120px',
-          maxWidth: '100vw',
-          width: '100vw',
-          marginLeft: 'calc(-50vw + 50%)',
-          padding: '0 24px',
-          boxSizing: 'border-box',
-        }}>
-          <h1 
-            ref={topicTitleRef}
-            className="topic-title-marquee text-black"
-            style={{
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '42px',
-              fontWeight: '500',
-              lineHeight: '54px',
-              letterSpacing: '0',
-              textAlign: 'center',
-              padding: '0',
-              margin: '0',
-            }} 
-          >
-            {shouldDuplicateTitle ? (
-              <>
-                <span style={{ paddingRight: '20px' }}>{currentTopic.name}</span>
-                <span>{currentTopic.name}</span>
-              </>
-            ) : currentTopic.name}
-          </h1>
-        </div>
 
         {/* Форма добавления нового слова */}
         <div className="bg-white mobile-614 mobile-section-spacing mobile-word-form w-full" style={{ 
