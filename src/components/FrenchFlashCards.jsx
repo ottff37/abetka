@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// Подключаем Geist из Google Fonts
+// Подключаем Geist из Google Fonts и отключаем зум на мобилках
 if (typeof document !== 'undefined') {
+  // Set viewport to prevent zoom
+  let viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0');
+  } else {
+    viewport = document.createElement('meta');
+    viewport.name = 'viewport';
+    viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0';
+    document.head.appendChild(viewport);
+  }
+  
   const link = document.createElement('link');
   link.href = 'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap';
   link.rel = 'stylesheet';
@@ -10,6 +21,10 @@ if (typeof document !== 'undefined') {
   // Add CSS for back button
   const style = document.createElement('style');
   style.textContent = `
+    input, button, textarea, select {
+      font-size: 16px !important;
+    }
+    
     .sidebar-buttons-container {
       position: fixed;
       left: 52px;
@@ -40,10 +55,18 @@ if (typeof document !== 'undefined') {
       padding: 0;
     }
     
+    .back-button-sidebar:hover, .export-button-sidebar:hover, .import-button-sidebar:hover {
+      background: #D9D8D5;
+    }
+    
     .export-button-sidebar:disabled, .import-button-sidebar:disabled {
       background: #D1D0CE;
       cursor: not-allowed;
       opacity: 0.5;
+    }
+    
+    .export-button-sidebar:disabled:hover, .import-button-sidebar:disabled:hover {
+      background: #D1D0CE;
     }
     
     .back-button-sidebar div, .export-button-sidebar div, .import-button-sidebar div {
@@ -92,18 +115,64 @@ if (typeof document !== 'undefined') {
     .api-key-modal-content {
       width: 100%;
       padding: 16px;
+      max-width: 480px;
+      border-radius: 20px !important;
+    }
+    
+    .api-key-input-wrapper {
+      margin-bottom: 80px;
+    }
+    
+    .celebration-modal-content {
+      border-radius: 20px !important;
+    }
+    
+    /* Gap between input and buttons */
+    .api-key-modal-content input {
+      margin-bottom: 80px !important;
     }
     
     @media (min-width: 769px) {
       .celebration-modal-content {
+        border-radius: 24px !important;
         width: 480px !important;
-        padding: 48px 32px !important;
+        padding: 32px !important;
+      }
+      
+      .celebration-modal-content h1 {
+        font-size: 38px !important;
+        line-height: 50px !important;
       }
       
       .api-key-modal-content {
-        width: 480px !important;
-        padding: 48px 32px !important;
+        border-radius: 24px !important;
+        padding: 32px 32px !important;
       }
+      
+      .api-key-input-wrapper {
+        margin-bottom: 100px !important;
+      }
+      
+      .api-key-modal-content h2 {
+        font-size: 38px !important;
+        line-height: 50px !important;
+      }
+      
+      /* Gap between input and buttons on desktop */
+      .api-key-modal-content input {
+        margin-bottom: 100px !important;
+      }
+    }
+    
+    /* Mobile styles for modal titles */
+    .celebration-modal-content h1 {
+      font-size: 30px !important;
+      line-height: 38px !important;
+    }
+    
+    .api-key-modal-content h2 {
+      font-size: 30px !important;
+      line-height: 38px !important;
     }
     
     
@@ -1067,8 +1136,11 @@ export default function FrenchFlashCardsApp() {
     const newCount = wordsAddedCount + 1;
     setWordsAddedCount(newCount);
     
-    // Show celebration modal after first word
-    if (newCount === 1) {
+    // Подсчитываем общее количество слов во всех темах
+    const totalWords = updated.reduce((sum, topic) => sum + topic.cards.length, 0);
+    
+    // Show celebration modal after every 100 words
+    if (totalWords % 100 === 0) {
       setShowCelebrationModal(true);
     }
     
@@ -1612,175 +1684,8 @@ export default function FrenchFlashCardsApp() {
   if (!currentTopic) {
 
     return (
+      <>
       <div className="min-h-screen py-28 px-8" style={{ backgroundColor: '#F6F2F2' }}>
-        {/* API Key Modal */}
-        {showApiKeyModal && (
-          <div className="api-key-modal-overlay" style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}>
-            <div className="api-key-modal-content" style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '24px',
-              textAlign: 'center',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            }}>
-              {/* Key Icon */}
-              <div style={{ marginBottom: '32px', fontSize: '80px' }}>
-                🔑
-              </div>
-
-              {/* Title */}
-              <h2 style={{
-                fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                fontSize: '32px',
-                fontWeight: '500',
-                lineHeight: '40px',
-                marginBottom: '16px',
-                color: '#000000',
-                textAlign: 'center',
-              }}>
-                Gemini API Key
-              </h2>
-
-              {/* Subtitle */}
-              <p style={{
-                fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                fontSize: '16px',
-                fontWeight: '400',
-                lineHeight: '26px',
-                color: 'rgba(0, 0, 0, 0.6)',
-                marginBottom: '32px',
-              }}>
-                This app needs a Gemini API key to translate and analyze French words.
-              </p>
-
-              {/* Instructions */}
-              <div style={{
-                fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                marginBottom: '24px',
-                textAlign: 'left',
-              }}>
-                <p style={{
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#000000',
-                  marginBottom: '12px',
-                }}>
-                  How to get your free API key:
-                </p>
-                <ol style={{
-                  fontSize: '13px',
-                  color: 'rgba(0, 0, 0, 0.6)',
-                  paddingLeft: '20px',
-                  margin: 0,
-                  lineHeight: '22px',
-                }}>
-                  <li>Go to <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: '#4285f4', textDecoration: 'none' }}>makersuite.google.com/app/apikey</a></li>
-                  <li>Click "Create API Key"</li>
-                  <li>Copy the key (starts with AIza)</li>
-                  <li>Paste it below</li>
-                </ol>
-              </div>
-
-              {/* Input */}
-              <input
-                type="password"
-                placeholder="Paste your API key here..."
-                value={tempApiKey}
-                onChange={(e) => setTempApiKey(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    if (tempApiKey.trim()) {
-                      localStorage.setItem('gemini_api_key', tempApiKey);
-                      setApiKey(tempApiKey);
-                      setShowApiKeyModal(false);
-                    }
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(0, 0, 0, 0.12)',
-                  fontSize: '14px',
-                  marginBottom: '20px',
-                  boxSizing: 'border-box',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  backgroundColor: '#ffffff',
-                  color: '#000000',
-                  colorScheme: 'light',
-                  outline: 'none'
-                }}
-              />
-
-              {/* Save Button */}
-              <button
-                onClick={() => {
-                  if (tempApiKey.trim()) {
-                    localStorage.setItem('gemini_api_key', tempApiKey);
-                    setApiKey(tempApiKey);
-                    setShowApiKeyModal(false);
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '16px 20px',
-                  backgroundColor: '#000000',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  lineHeight: '24px',
-                  cursor: 'pointer',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#333333'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#000000'}
-              >
-                Save API Key
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Change API Key Button (Top Right) */}
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          zIndex: 100
-        }}>
-          <button
-            onClick={() => {
-              setTempApiKey(apiKey);
-              setShowApiKeyModal(true);
-            }}
-            style={{
-              padding: '10px 16px',
-              background: '#f0f0f0',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontWeight: '500'
-            }}
-          >
-            🔑 Change API Key
-          </button>
-        </div>
-
         <div className="max-w-2xl mx-auto flex flex-col items-center">
           {/* Заголовок */}
           <h1 style={{
@@ -1867,6 +1772,16 @@ export default function FrenchFlashCardsApp() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (newTopicName.trim()) {
+                      e.target.style.backgroundColor = '#333333';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (newTopicName.trim()) {
+                      e.target.style.backgroundColor = '#000000';
+                    }
                   }}
                   className="rounded-xl transition flex-shrink-0"
                 >
@@ -2030,6 +1945,26 @@ export default function FrenchFlashCardsApp() {
 
           {/* Export all topics button - Main screen only */}
           <div className="sidebar-buttons-container">
+            {/* API Key Button */}
+            <button
+              onClick={() => {
+                setTempApiKey(apiKey);
+                setShowApiKeyModal(true);
+              }}
+              className="export-button-sidebar"
+              style={{
+                border: 'none',
+                padding: 0,
+              }}
+              title="Change Gemini API Key"
+            >
+              <div>
+                <svg width="20" height="20" viewBox="0 -960 960 960" fill="#000000">
+                  <path d="M280-400q-33 0-56.5-23.5T200-480q0-33 23.5-56.5T280-560q33 0 56.5 23.5T360-480q0 33-23.5 56.5T280-400Zm0 160q-100 0-170-70T40-480q0-100 70-170t170-70q67 0 121.5 33t86.5 87h352l120 120-180 180-80-60-80 60-85-60h-47q-32 54-86.5 87T280-240Zm0-80q56 0 98.5-34t56.5-86h125l58 41 82-61 71 55 75-75-40-40H435q-14-52-56.5-86T280-640q-66 0-113 47t-47 113q0 66 47 113t113 47Z"/>
+                </svg>
+              </div>
+            </button>
+
             {/* Export all topics button */}
             <button
               onClick={exportAllTopics}
@@ -2051,6 +1986,183 @@ export default function FrenchFlashCardsApp() {
 
         </div>
       </div>
+
+      {showApiKeyModal && (
+        <div className="celebration-modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div className="celebration-modal-content" style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '24px',
+            textAlign: 'center',
+          }}>
+            {/* API Key Icon */}
+            <div style={{ marginBottom: '32px', fontSize: '80px' }}>
+              🔑
+            </div>
+
+            {/* Title */}
+            <h1 className="celebration-modal-title" style={{
+              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              fontSize: '30px',
+              fontWeight: '500',
+              lineHeight: '38px',
+              letterSpacing: '0',
+              marginBottom: '12px',
+              color: '#000000',
+              textAlign: 'center',
+            }}>
+              Gemini API Key
+            </h1>
+
+            {/* Subtitle */}
+            <p style={{
+              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              fontSize: '16px',
+              fontWeight: '400',
+              lineHeight: '26px',
+              color: 'rgba(0, 0, 0, 0.6)',
+              marginBottom: '24px',
+            }}>
+              This app needs a Gemini API Key to translate and analyze.
+            </p>
+
+            {/* API Key Input */}
+            <div className="api-key-input-wrapper" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}>
+              {/* Icon */}
+              <div style={{
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="24" height="24" viewBox="0 -960 960 960" fill="#000000">
+                  <path d="M280-400q-33 0-56.5-23.5T200-480q0-33 23.5-56.5T280-560q33 0 56.5 23.5T360-480q0 33-23.5 56.5T280-400Zm0 160q-100 0-170-70T40-480q0-100 70-170t170-70q67 0 121.5 33t86.5 87h352l120 120-180 180-80-60-80 60-85-60h-47q-32 54-86.5 87T280-240Zm0-80q56 0 98.5-34t56.5-86h125l58 41 82-61 71 55 75-75-40-40H435q-14-52-56.5-86T280-640q-66 0-113 47t-47 113q0 66 47 113t113 47Z"/>
+                </svg>
+              </div>
+              {/* Input */}
+              <input
+                type="password"
+                value={tempApiKey}
+                onChange={(e) => setTempApiKey(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    if (tempApiKey.trim()) {
+                      localStorage.setItem('gemini_api_key', tempApiKey);
+                      setApiKey(tempApiKey);
+                      setShowApiKeyModal(false);
+                    }
+                  }
+                }}
+                placeholder="Starts with Alza"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  height: '56px',
+                  padding: '0 20px',
+                  border: '1.5px solid rgba(0, 0, 0, 0.12)',
+                  boxSizing: 'border-box',
+                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  lineHeight: '24px',
+                  borderRadius: '12px',
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
+                  colorScheme: 'light',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* Buttons */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}>
+              {/* Save Button */}
+              <button
+                onClick={() => {
+                  if (tempApiKey.trim()) {
+                    localStorage.setItem('gemini_api_key', tempApiKey);
+                    setApiKey(tempApiKey);
+                    setShowApiKeyModal(false);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  height: '56px',
+                  padding: '0 20px',
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  lineHeight: '24px',
+                  cursor: 'pointer',
+                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#333333'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#000000'}
+              >
+                Save this key
+              </button>
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => {
+                  setShowApiKeyModal(false);
+                  setTempApiKey('');
+                }}
+                style={{
+                  width: '100%',
+                  height: '56px',
+                  padding: '0 20px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.07)',
+                  color: '#000000',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  lineHeight: '24px',
+                  cursor: 'pointer',
+                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.12)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.07)'}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
@@ -2108,7 +2220,6 @@ export default function FrenchFlashCardsApp() {
             backgroundColor: '#ffffff',
             borderRadius: '24px',
             textAlign: 'center',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
           }}>
             {/* Flower Icon */}
             <div style={{ marginBottom: '32px', fontSize: '80px' }}>
@@ -2118,11 +2229,9 @@ export default function FrenchFlashCardsApp() {
             {/* Title */}
             <h1 style={{
               fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '38px',
               fontWeight: '500',
-              lineHeight: '50px',
               letterSpacing: '0',
-              marginBottom: '16px',
+              marginBottom: '12px',
               color: '#000000',
               textAlign: 'center',
             }}>
@@ -2506,6 +2615,17 @@ export default function FrenchFlashCardsApp() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    transition: 'background-color 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (searchInput && !loadingTranslation) {
+                      e.target.style.backgroundColor = '#333333';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (searchInput && !loadingTranslation) {
+                      e.target.style.backgroundColor = '#000000';
+                    }
                   }}
                 >
                   Search
