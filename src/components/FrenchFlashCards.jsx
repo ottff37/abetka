@@ -21,6 +21,12 @@ if (typeof document !== 'undefined') {
   // Add CSS for back button
   const style = document.createElement('style');
   style.textContent = `
+    html, body {
+      overscroll-behavior: none;
+      overscroll-behavior-y: none;
+      -webkit-overflow-scrolling: auto;
+    }
+    
     input, button, textarea, select {
       font-size: 16px !important;
     }
