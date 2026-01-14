@@ -120,7 +120,7 @@ if (typeof document !== 'undefined') {
     }
     
     .api-key-input-wrapper {
-      margin-bottom: 80px;
+      /* margin-bottom removed */
     }
     
     .celebration-modal-content {
@@ -129,7 +129,7 @@ if (typeof document !== 'undefined') {
     
     /* Gap between input and buttons */
     .api-key-modal-content input {
-      margin-bottom: 80px !important;
+      /* margin-bottom removed */
     }
     
     @media (min-width: 769px) {
@@ -150,7 +150,7 @@ if (typeof document !== 'undefined') {
       }
       
       .api-key-input-wrapper {
-        margin-bottom: 100px !important;
+        /* margin-bottom removed */
       }
       
       .api-key-modal-content h2 {
@@ -160,7 +160,7 @@ if (typeof document !== 'undefined') {
       
       /* Gap between input and buttons on desktop */
       .api-key-modal-content input {
-        margin-bottom: 100px !important;
+        /* margin-bottom removed */
       }
     }
     
@@ -514,6 +514,29 @@ if (typeof document !== 'undefined') {
       animation: marquee var(--animation-duration, 20s) linear infinite;
     }
     
+    /* Delete button styles */
+    button.delete-card-button {
+      width: 40px !important;
+      height: 56px !important;
+      border-radius: 8px !important;
+      border: none !important;
+      background-color: transparent !important;
+      cursor: pointer !important;
+      transition: background-color 0.2s ease !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-shrink: 0 !important;
+      padding: 0 !important;
+      pointer-events: auto !important;
+      z-index: 100 !important;
+      position: relative !important;
+    }
+    
+    button.delete-card-button:hover {
+      background-color: rgba(0, 0, 0, 0.25) !important;
+    }
+    
 `;
   document.head.appendChild(style);
 }
@@ -797,6 +820,29 @@ export default function FrenchFlashCardsApp() {
   const [apiKey, setApiKey] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState('');
+
+  // Функция валидации Gemini API ключа
+  const validateApiKey = (key) => {
+    const trimmedKey = key.trim();
+    
+    // Проверка на пустое значение
+    if (!trimmedKey) {
+      return 'API Key cannot be empty';
+    }
+    
+    // Проверка на корректный формат Gemini API ключа
+    if (!trimmedKey.startsWith('AIza')) {
+      return 'Invalid API Key format. Must start with "AIza"';
+    }
+    
+    // Проверка минимальной длины
+    if (trimmedKey.length < 40) {
+      return 'API Key is too short';
+    }
+    
+    return '';
+  };
   
   // States для настроек типографии карточек
   const [cardFontFamily, setCardFontFamily] = useState('Geist');
@@ -820,6 +866,7 @@ export default function FrenchFlashCardsApp() {
     if (savedApiKey) {
       setApiKey(savedApiKey);
     } else {
+      setApiKeyError('');
       setShowApiKeyModal(true);
     }
   }, []);
@@ -2031,6 +2078,7 @@ export default function FrenchFlashCardsApp() {
             <button
               onClick={() => {
                 setTempApiKey(apiKey);
+                setApiKeyError('');
                 setShowApiKeyModal(true);
               }}
               className="export-button-sidebar"
@@ -2086,6 +2134,11 @@ export default function FrenchFlashCardsApp() {
             backgroundColor: '#ffffff',
             borderRadius: '24px',
             textAlign: 'center',
+            height: '642px',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '32px',
+            boxSizing: 'border-box',
           }}>
             {/* API Key Icon */}
             <div style={{ marginBottom: '32px', fontSize: '80px' }}>
@@ -2118,58 +2171,93 @@ export default function FrenchFlashCardsApp() {
               This app needs a Gemini API Key to translate and analyze.
             </p>
 
-            {/* API Key Input */}
-            <div className="api-key-input-wrapper" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
+            {/* API Key Input + Error Wrapper */}
+            <div style={{
+              marginBottom: 'auto',
+              width: '100%',
             }}>
-              {/* Icon */}
+              {/* Input + Error Container */}
               <div style={{
-                width: '32px',
-                height: '32px',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
+                flexDirection: 'column',
+                gap: '12px',
               }}>
-                <svg width="24" height="24" viewBox="0 -960 960 960" fill="#000000">
-                  <path d="M280-400q-33 0-56.5-23.5T200-480q0-33 23.5-56.5T280-560q33 0 56.5 23.5T360-480q0 33-23.5 56.5T280-400Zm0 160q-100 0-170-70T40-480q0-100 70-170t170-70q67 0 121.5 33t86.5 87h352l120 120-180 180-80-60-80 60-85-60h-47q-32 54-86.5 87T280-240Zm0-80q56 0 98.5-34t56.5-86h125l58 41 82-61 71 55 75-75-40-40H435q-14-52-56.5-86T280-640q-66 0-113 47t-47 113q0 66 47 113t113 47Z"/>
-                </svg>
+                {/* Input Row */}
+                <div className="api-key-input-wrapper" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}>
+                  {/* Icon */}
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <svg width="24" height="24" viewBox="0 -960 960 960" fill="#000000">
+                      <path d="M280-400q-33 0-56.5-23.5T200-480q0-33 23.5-56.5T280-560q33 0 56.5 23.5T360-480q0 33-23.5 56.5T280-400Zm0 160q-100 0-170-70T40-480q0-100 70-170t170-70q67 0 121.5 33t86.5 87h352l120 120-180 180-80-60-80 60-85-60h-47q-32 54-86.5 87T280-240Zm0-80q56 0 98.5-34t56.5-86h125l58 41 82-61 71 55 75-75-40-40H435q-14-52-56.5-86T280-640q-66 0-113 47t-47 113q0 66 47 113t113 47Z"/>
+                    </svg>
+                  </div>
+                  {/* Input */}
+                  <input
+                    type="password"
+                    value={tempApiKey}
+                    onChange={(e) => {
+                      setTempApiKey(e.target.value);
+                      setApiKeyError(''); // Очищаем ошибку при вводе
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        const error = validateApiKey(tempApiKey);
+                        if (!error) {
+                          localStorage.setItem('gemini_api_key', tempApiKey);
+                          setApiKey(tempApiKey);
+                          setShowApiKeyModal(false);
+                          setApiKeyError('');
+                          setTempApiKey('');
+                        } else {
+                          setApiKeyError(error);
+                        }
+                      }
+                    }}
+                    placeholder="Starts with Alza"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      height: '56px',
+                      padding: '0 20px',
+                      border: apiKeyError ? '1.5px solid #DC2626' : '1.5px solid rgba(0, 0, 0, 0.12)',
+                      boxSizing: 'border-box',
+                      fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      lineHeight: '24px',
+                      borderRadius: '12px',
+                      backgroundColor: '#ffffff',
+                      color: '#000000',
+                      colorScheme: 'light',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                {/* Error message */}
+                {apiKeyError && (
+                  <div style={{
+                    fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    lineHeight: '20px',
+                    color: '#DC2626',
+                    textAlign: 'left',
+                  }}>
+                    {apiKeyError}
+                  </div>
+                )}
               </div>
-              {/* Input */}
-              <input
-                type="password"
-                value={tempApiKey}
-                onChange={(e) => setTempApiKey(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    if (tempApiKey.trim()) {
-                      localStorage.setItem('gemini_api_key', tempApiKey);
-                      setApiKey(tempApiKey);
-                      setShowApiKeyModal(false);
-                    }
-                  }
-                }}
-                placeholder="Starts with Alza"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  height: '56px',
-                  padding: '0 20px',
-                  border: '1.5px solid rgba(0, 0, 0, 0.12)',
-                  boxSizing: 'border-box',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  lineHeight: '24px',
-                  borderRadius: '12px',
-                  backgroundColor: '#ffffff',
-                  color: '#000000',
-                  colorScheme: 'light',
-                  outline: 'none',
-                }}
-              />
             </div>
 
             {/* Buttons */}
@@ -2181,10 +2269,15 @@ export default function FrenchFlashCardsApp() {
               {/* Save Button */}
               <button
                 onClick={() => {
-                  if (tempApiKey.trim()) {
+                  const error = validateApiKey(tempApiKey);
+                  if (error) {
+                    setApiKeyError(error);
+                  } else {
                     localStorage.setItem('gemini_api_key', tempApiKey);
                     setApiKey(tempApiKey);
                     setShowApiKeyModal(false);
+                    setApiKeyError('');
+                    setTempApiKey('');
                     hideKeyboard();
                   }
                 }}
@@ -2217,6 +2310,7 @@ export default function FrenchFlashCardsApp() {
                 onClick={() => {
                   setShowApiKeyModal(false);
                   setTempApiKey('');
+                  setApiKeyError('');
                   hideKeyboard();
                 }}
                 style={{
@@ -2950,6 +3044,14 @@ export default function FrenchFlashCardsApp() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
+                    transition: 'background-color 0.2s ease',
+                    borderRadius: '8px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                   title="Delete word"
                 >
@@ -3158,6 +3260,7 @@ export default function FrenchFlashCardsApp() {
                       border: '1.5px solid rgba(0, 0, 0, 0.08)',
                       boxSizing: 'border-box',
                       borderRadius: '24px',
+                      overflow: 'visible',
                     }}
                     className="p-4 flex items-center gap-4 hover:bg-black/2 transition"
                   >
@@ -3201,11 +3304,23 @@ export default function FrenchFlashCardsApp() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         deleteCard(idx);
                       }}
-                      className="text-black/50 hover:text-red-500 transition flex-shrink-0"
+                      className="delete-card-button"
                     >
-                      <svg width="32" height="56" viewBox="0 0 32 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg 
+                        width="24" 
+                        height="24" 
+                        viewBox="0 0 32 56" 
+                        fill="none" 
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{ 
+                          pointerEvents: 'none',
+                          userSelect: 'none',
+                          display: 'block',
+                        }}
+                      >
                         <path d="M14 28V33" stroke="black" strokeOpacity="0.5" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M18 28V33" stroke="black" strokeOpacity="0.5" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M8 23H24" stroke="#7D7D7D" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
