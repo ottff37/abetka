@@ -1667,7 +1667,10 @@ export default function FrenchFlashCardsApp() {
                   fontSize: '13px',
                   marginBottom: '20px',
                   boxSizing: 'border-box',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
+                  colorScheme: 'light'
                 }}
               />
 
@@ -1786,6 +1789,7 @@ export default function FrenchFlashCardsApp() {
                       borderRadius: '12px',
                       backgroundColor: '#ffffff',
                       color: '#000000',
+                      colorScheme: 'light',
                       outline: 'none',
                     }}
                   />
@@ -2408,6 +2412,7 @@ export default function FrenchFlashCardsApp() {
                         letterSpacing: '0%',
                         boxSizing: 'border-box',
                         color: '#000000',
+                        colorScheme: 'light',
                         outline: 'none',
                         backgroundColor: 'transparent',
                         height: '56px',
@@ -2580,6 +2585,8 @@ export default function FrenchFlashCardsApp() {
                           lineHeight: '24px',
                           letterSpacing: '0%',
                           color: '#000000',
+                          backgroundColor: '#ffffff',
+                          colorScheme: 'light',
                           outline: 'none',
                           boxSizing: 'border-box',
                           textTransform: 'capitalize'
@@ -2619,6 +2626,8 @@ export default function FrenchFlashCardsApp() {
                           lineHeight: '24px',
                           letterSpacing: '0%',
                           color: '#000000',
+                          backgroundColor: '#ffffff',
+                          colorScheme: 'light',
                           outline: 'none',
                           boxSizing: 'border-box',
                           textTransform: 'capitalize'
