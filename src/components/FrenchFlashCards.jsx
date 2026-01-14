@@ -486,6 +486,34 @@ if (typeof document !== 'undefined') {
       padding: 0 !important;
     }
     
+    /* Marquee animation for long topic names */
+    @keyframes marquee {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+    
+    .marquee-container {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    
+    .topic-title-marquee {
+      white-space: nowrap;
+      display: block;
+      margin: 0;
+    }
+    
+    .topic-title-marquee.animate {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+    }
+    
 `;
   document.head.appendChild(style);
 }
@@ -777,8 +805,10 @@ export default function FrenchFlashCardsApp() {
   const [cardLineHeight, setCardLineHeight] = useState('24');
   const [cardLetterSpacing, setCardLetterSpacing] = useState('0');
   const [cardTextAlign, setCardTextAlign] = useState('center');
+  const [shouldDuplicateTitle, setShouldDuplicateTitle] = useState(false);
   
   const inputRef = useRef(null);
+  const topicTitleRef = useRef(null);
 
   // Загрузка данных из storage при загрузке
   useEffect(() => {
@@ -812,6 +842,41 @@ export default function FrenchFlashCardsApp() {
       document.removeEventListener('dragleave', preventDragDefault);
     };
   }, []);
+
+  // Check if topic title overflows and apply marquee animation
+  useEffect(() => {
+    if (topicTitleRef.current && currentTopic) {
+      const element = topicTitleRef.current;
+      const container = element.parentElement;
+      
+      const checkOverflow = () => {
+        // Force reflow
+        element.offsetHeight;
+        
+        if (element.scrollWidth > container.clientWidth) {
+          element.classList.add('animate');
+          setShouldDuplicateTitle(true);
+        } else {
+          element.classList.remove('animate');
+          setShouldDuplicateTitle(false);
+        }
+      };
+      
+      // Check immediately
+      checkOverflow();
+      
+      // Check after a small delay for DOM to fully render
+      const timeoutId = setTimeout(checkOverflow, 100);
+      
+      // Also check on window resize
+      window.addEventListener('resize', checkOverflow);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('resize', checkOverflow);
+      };
+    }
+  }, [currentTopic]);
 
   // ========== API CONFIG ==========
 
@@ -863,6 +928,14 @@ export default function FrenchFlashCardsApp() {
   const removeError = (id) => removeNotification(setErrors, id);
   const addSuccess = (message) => addNotification(setSuccesses, message, 5000);
   const removeSuccess = (id) => removeNotification(setSuccesses, id);
+
+  // Hide keyboard on mobile
+  const hideKeyboard = () => {
+    const activeElement = document.activeElement;
+    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+      activeElement.blur();
+    }
+  };
 
   // Функция экспорта всех тем
   // Загрузка всех тем
@@ -1082,6 +1155,7 @@ export default function FrenchFlashCardsApp() {
     setTopics(updated);
     saveTopics(updated);
     setNewTopicName('');
+    hideKeyboard();
   };
 
   // Удаление темы
@@ -2103,6 +2177,7 @@ export default function FrenchFlashCardsApp() {
                     localStorage.setItem('gemini_api_key', tempApiKey);
                     setApiKey(tempApiKey);
                     setShowApiKeyModal(false);
+                    hideKeyboard();
                   }
                 }}
                 style={{
@@ -2134,6 +2209,7 @@ export default function FrenchFlashCardsApp() {
                 onClick={() => {
                   setShowApiKeyModal(false);
                   setTempApiKey('');
+                  hideKeyboard();
                 }}
                 style={{
                   width: '100%',
@@ -2493,18 +2569,37 @@ export default function FrenchFlashCardsApp() {
           </div>
         </button>
       </div>
-      <div className="max-w-4xl mx-auto flex flex-col items-center">
+      <div className="max-w-4xl mx-auto flex flex-col items-center w-full">
         {/* Заголовок */}
-        <div style={{ marginBottom: '0', marginTop: '120px' }}>
-          <h1 style={{
-            fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            fontSize: '42px',
-            fontWeight: '500',
-            lineHeight: '54px',
-            letterSpacing: '0',
-            textAlign: 'center',
-          }} className="text-black">
-            {currentTopic.name}
+        <div className="marquee-container" style={{ 
+          marginBottom: '0', 
+          marginTop: '120px',
+          maxWidth: '100vw',
+          width: '100vw',
+          marginLeft: 'calc(-50vw + 50%)',
+          padding: '0 24px',
+          boxSizing: 'border-box',
+        }}>
+          <h1 
+            ref={topicTitleRef}
+            className="topic-title-marquee text-black"
+            style={{
+              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              fontSize: '42px',
+              fontWeight: '500',
+              lineHeight: '54px',
+              letterSpacing: '0',
+              textAlign: 'center',
+              padding: '0',
+              margin: '0',
+            }} 
+          >
+            {shouldDuplicateTitle ? (
+              <>
+                <span style={{ paddingRight: '20px' }}>{currentTopic.name}</span>
+                <span>{currentTopic.name}</span>
+              </>
+            ) : currentTopic.name}
           </h1>
         </div>
 
@@ -2558,6 +2653,7 @@ export default function FrenchFlashCardsApp() {
                       onKeyPress={(e) => {
                         if (e.key === 'Enter' && searchInput.trim() && !loadingTranslation) {
                           getTranslationAndConjugation(searchInput);
+                          hideKeyboard();
                         }
                       }}
                       placeholder="Type French or Russian word..."
@@ -2592,6 +2688,7 @@ export default function FrenchFlashCardsApp() {
                   onClick={() => {
                     if (searchInput.trim()) {
                       getTranslationAndConjugation(searchInput);
+                      hideKeyboard();
                     }
                   }}
                   disabled={!searchInput || loadingTranslation}
