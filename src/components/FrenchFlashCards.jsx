@@ -1804,6 +1804,8 @@ export default function FrenchFlashCardsApp() {
   const handleCardPointerDown = (e, cardIndex) => {
     // Только для сенсорного ввода (touch)
     if (e.pointerType === 'touch') {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
       setDraggedCardIndex(cardIndex);
       console.log('Pointer down on card:', cardIndex);
     }
@@ -1859,6 +1861,7 @@ export default function FrenchFlashCardsApp() {
 
   const handleCardPointerUp = (e) => {
     if (e.pointerType === 'touch') {
+      e.currentTarget.releasePointerCapture(e.pointerId);
       console.log('Pointer up - clearing card drag state');
       setDraggedCardIndex(null);
       setDragOverCardIndex(null);
@@ -2961,6 +2964,11 @@ export default function FrenchFlashCardsApp() {
         .success-toast {
           animation: slideUp 0.3s ease-out;
         }
+        /* Card touch drag support */
+        .card-item {
+          touch-action: none;
+          user-select: none;
+        }
         /* iOS Safe Area */
         @supports (padding: max(0px)) {
           body {
@@ -3914,6 +3922,8 @@ export default function FrenchFlashCardsApp() {
                       borderRadius: '20px',
                       overflow: 'visible',
                       padding: '0.9rem',
+                      touchAction: 'none',
+                      userSelect: 'none',
                     }}
                   >
                     {/* Left icon */}
