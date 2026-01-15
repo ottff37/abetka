@@ -694,22 +694,63 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
     if (!baseWord || !verbForm) return verbForm;
     
     const cleanVerb = verbForm.trim();
+    let cleanBase = baseWord.trim();
+    
+    // Убираем возвратный префикс для сравнения
+    if (cleanBase.toLowerCase().startsWith('se ')) {
+      cleanBase = cleanBase.substring(3).trim();
+    } else if (cleanBase.toLowerCase().startsWith("s'")) {
+      cleanBase = cleanBase.substring(2).trim();
+    }
+    
+    // Убираем возвратный префикс из формы если есть
+    let baseForComparison = cleanVerb;
+    if (cleanVerb.toLowerCase().startsWith('se ')) {
+      baseForComparison = cleanVerb.substring(3).trim();
+    } else if (cleanVerb.toLowerCase().startsWith("s'")) {
+      baseForComparison = cleanVerb.substring(2).trim();
+    }
+    
+    // Пытаемся убрать окончания инфинитива для лучшего сравнения
+    let baseForMatching = cleanBase.toLowerCase();
+    
+    // Убираем типичные французские окончания инфинитива
+    if (baseForMatching.endsWith('er')) {
+      baseForMatching = baseForMatching.slice(0, -2);
+    } else if (baseForMatching.endsWith('ir')) {
+      baseForMatching = baseForMatching.slice(0, -2);
+    } else if (baseForMatching.endsWith('re')) {
+      baseForMatching = baseForMatching.slice(0, -2);
+    } else if (baseForMatching.endsWith('oir')) {
+      baseForMatching = baseForMatching.slice(0, -3);
+    }
     
     // Находим где кончается корень
     let commonLength = 0;
-    for (let i = 0; i < Math.min(baseWord.length, cleanVerb.length); i++) {
-      if (baseWord[i] === cleanVerb[i]) {
+    const minLength = Math.min(baseForMatching.length, baseForComparison.toLowerCase().length);
+    
+    for (let i = 0; i < minLength; i++) {
+      if (baseForMatching[i] === baseForComparison.toLowerCase()[i]) {
         commonLength = i + 1;
       } else {
         break;
       }
     }
-
-    if (commonLength > 0 && commonLength < cleanVerb.length) {
-      const root = cleanVerb.substring(0, commonLength);
-      const ending = cleanVerb.substring(commonLength);
-      return `${root}<b>${ending}</b>`;
+    
+    // Если совпадение слишком малое (менее 3 символов), показываем всё слово без выделения
+    if (commonLength < 3) {
+      return cleanVerb;
     }
+    
+    if (commonLength > 0 && commonLength < baseForComparison.length) {
+      const root = baseForComparison.substring(0, commonLength);
+      const ending = baseForComparison.substring(commonLength);
+      
+      // Восстанавливаем префикс если был
+      const prefix = cleanVerb.substring(0, cleanVerb.length - baseForComparison.length);
+      return `${prefix}${root}<b>${ending}</b>`;
+    }
+    
     return cleanVerb;
   };
 
@@ -822,22 +863,63 @@ const ConjugationTable = ({ conjugation, word }) => {
     if (!baseWord || !verbForm) return verbForm;
     
     const cleanVerb = verbForm.trim();
+    let cleanBase = baseWord.trim();
+    
+    // Убираем возвратный префикс для сравнения
+    if (cleanBase.toLowerCase().startsWith('se ')) {
+      cleanBase = cleanBase.substring(3).trim();
+    } else if (cleanBase.toLowerCase().startsWith("s'")) {
+      cleanBase = cleanBase.substring(2).trim();
+    }
+    
+    // Убираем возвратный префикс из формы если есть
+    let baseForComparison = cleanVerb;
+    if (cleanVerb.toLowerCase().startsWith('se ')) {
+      baseForComparison = cleanVerb.substring(3).trim();
+    } else if (cleanVerb.toLowerCase().startsWith("s'")) {
+      baseForComparison = cleanVerb.substring(2).trim();
+    }
+    
+    // Пытаемся убрать окончания инфинитива для лучшего сравнения
+    let baseForMatching = cleanBase.toLowerCase();
+    
+    // Убираем типичные французские окончания инфинитива
+    if (baseForMatching.endsWith('er')) {
+      baseForMatching = baseForMatching.slice(0, -2);
+    } else if (baseForMatching.endsWith('ir')) {
+      baseForMatching = baseForMatching.slice(0, -2);
+    } else if (baseForMatching.endsWith('re')) {
+      baseForMatching = baseForMatching.slice(0, -2);
+    } else if (baseForMatching.endsWith('oir')) {
+      baseForMatching = baseForMatching.slice(0, -3);
+    }
     
     // Находим где кончается корень
     let commonLength = 0;
-    for (let i = 0; i < Math.min(baseWord.length, cleanVerb.length); i++) {
-      if (baseWord[i] === cleanVerb[i]) {
+    const minLength = Math.min(baseForMatching.length, baseForComparison.toLowerCase().length);
+    
+    for (let i = 0; i < minLength; i++) {
+      if (baseForMatching[i] === baseForComparison.toLowerCase()[i]) {
         commonLength = i + 1;
       } else {
         break;
       }
     }
-
-    if (commonLength > 0 && commonLength < cleanVerb.length) {
-      const root = cleanVerb.substring(0, commonLength);
-      const ending = cleanVerb.substring(commonLength);
-      return `${root}<b>${ending}</b>`;
+    
+    // Если совпадение слишком малое (менее 3 символов), показываем всё слово без выделения
+    if (commonLength < 3) {
+      return cleanVerb;
     }
+    
+    if (commonLength > 0 && commonLength < baseForComparison.length) {
+      const root = baseForComparison.substring(0, commonLength);
+      const ending = baseForComparison.substring(commonLength);
+      
+      // Восстанавливаем префикс если был
+      const prefix = cleanVerb.substring(0, cleanVerb.length - baseForComparison.length);
+      return `${prefix}${root}<b>${ending}</b>`;
+    }
+    
     return cleanVerb;
   };
 
@@ -935,8 +1017,8 @@ export default function FrenchFlashCardsApp() {
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [draggedTopicId, setDraggedTopicId] = useState(null);
   const [dragOverTopicId, setDragOverTopicId] = useState(null);
-  const [draggedCardFrom, setDraggedCardFrom] = useState(null);
-  const [draggedCardTo, setDraggedCardTo] = useState(null);
+  const [draggedCardIndex, setDraggedCardIndex] = useState(null);
+  const [dragOverCardIndex, setDragOverCardIndex] = useState(null);
   const [touchDragTopicId, setTouchDragTopicId] = useState(null);
   const [touchDragOverTopicId, setTouchDragOverTopicId] = useState(null);
   const [pointerDownTopic, setPointerDownTopic] = useState(null);
@@ -1252,6 +1334,8 @@ export default function FrenchFlashCardsApp() {
         const prompt = `Для русского слова "${inputWord}":
 
 1. Переведи на французский язык (в начальную форму)
+   - Для ВОЗВРАТНЫХ глаголов обязательно вернуть с префиксом "se" или "s'" (например: se raser, s'endormir)
+   - Для обычных глаголов вернуть инфинитив (например: manger, avoir)
 2. Определи часть речи (глагол, существительное, прилагательное, наречие и т.д.)
 3. Если есть, укажи род (м. - мужской, ж. - женский, или -)
 4. Покажи все формы ТОЛЬКО в компактном формате:
@@ -1275,8 +1359,15 @@ export default function FrenchFlashCardsApp() {
 
         if (frenchMatch) {
           let frenchWord = frenchMatch[1].trim();
-          // Берём только первое слово (отбрасываем остальное)
-          frenchWord = frenchWord.split(/[\s\n,;:]+/)[0].toLowerCase();
+          // Для возвратных глаголов (начинаются с "se " или "s'") - берём всё
+          // Для обычных слов - берём первое слово
+          if (frenchWord.toLowerCase().startsWith('se ') || frenchWord.toLowerCase().startsWith("s'")) {
+            // Возвратный глагол - берём до первого переноса строки или знака препинания
+            frenchWord = frenchWord.split(/[\n,;:]/)[0].trim().toLowerCase();
+          } else {
+            // Обычное слово - берём только первое
+            frenchWord = frenchWord.split(/[\s\n,;:]+/)[0].toLowerCase();
+          }
           setNewFrench(frenchWord);
           setNewRussian(inputWord);
         } else {
@@ -1799,110 +1890,45 @@ export default function FrenchFlashCardsApp() {
     }
   };
 
-  // ========== CARD DRAG AND DROP HANDLERS ==========
-  
-  const onCardDragStart = (e, cardIndex) => {
-    setDraggedCardFrom(cardIndex);
-    setDraggedCardTo(cardIndex);
+  // Drag and drop для карточек слов
+  const handleCardDragStart = (e, cardIndex) => {
+    setDraggedCardIndex(cardIndex);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(cardIndex));
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
   };
 
-  const onCardDragOver = (e, cardIndex) => {
+  const handleCardDragOver = (e, cardIndex) => {
     e.preventDefault();
-    const index = cardIndex;
-    if (index !== draggedCardTo) {
-      setDraggedCardTo(index);
-    }
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCardIndex(cardIndex);
   };
 
-  const onCardDrop = () => {
-    if (
-      draggedCardFrom === null ||
-      draggedCardTo === null ||
-      draggedCardFrom === draggedCardTo
-    ) {
-      resetCardDrag();
-      return;
-    }
-    const updatedCards = [...cards];
-    const draggedCard = updatedCards.splice(draggedCardFrom, 1)[0];
-    updatedCards.splice(draggedCardTo, 0, draggedCard);
-
-    const updatedTopic = {
-      ...currentTopic,
-      cards: updatedCards
-    };
-    updateCurrentTopic([updatedTopic]);
-    resetCardDrag();
+  const handleCardDragLeave = () => {
+    setDragOverCardIndex(null);
   };
 
-  const onCardDragEnd = () => {
-    resetCardDrag();
-  };
-
-  const resetCardDrag = () => {
-    setDraggedCardFrom(null);
-    setDraggedCardTo(null);
-  };
-
-  // ========== TOUCH HANDLERS FOR MOBILE ==========
-  const onCardTouchStart = (e, cardIndex) => {
-    setDraggedCardFrom(cardIndex);
-    setDraggedCardTo(cardIndex);
-  };
-
-  const onCardTouchMove = (e, cardIndex) => {
-    if (draggedCardFrom === null || draggedCardFrom === undefined) {
-      return;
-    }
-
+  const handleCardDrop = (e, targetCardIndex) => {
     e.preventDefault();
-
-    try {
-      const touch = e.touches[0];
-      const touchY = touch.clientY;
-
-      const cardsList = document.querySelector('.cards-list-container');
-      if (!cardsList) return;
-
-      const allCards = Array.from(cardsList.querySelectorAll('[data-position]'));
-
-      for (let card of allCards) {
-        const rect = card.getBoundingClientRect();
-        if (touchY >= rect.top && touchY <= rect.bottom) {
-          const hoveredIndex = parseInt(card.getAttribute('data-position'), 10);
-          if (hoveredIndex !== draggedCardTo) {
-            setDraggedCardTo(hoveredIndex);
-          }
-          break;
-        }
+    e.stopPropagation();
+    
+    if (draggedCardIndex !== null && draggedCardIndex !== targetCardIndex) {
+      const newCards = [...cards];
+      const [draggedCard] = newCards.splice(draggedCardIndex, 1);
+      newCards.splice(targetCardIndex, 0, draggedCard);
+      
+      setCards(newCards);
+      
+      // Update cards in current topic
+      if (currentTopic) {
+        const updatedTopics = topics.map(t => 
+          t.id === currentTopic.id ? { ...t, cards: newCards } : t
+        );
+        updateTopics(updatedTopics);
       }
-    } catch (error) {
-      console.error('Error in onCardTouchMove:', error);
     }
-  };
-
-  const onCardTouchEnd = () => {
-    if (
-      draggedCardFrom === null ||
-      draggedCardTo === null ||
-      draggedCardFrom === draggedCardTo
-    ) {
-      resetCardDrag();
-      return;
-    }
-
-    const updatedCards = [...cards];
-    const draggedCard = updatedCards.splice(draggedCardFrom, 1)[0];
-    updatedCards.splice(draggedCardTo, 0, draggedCard);
-
-    const updatedTopic = {
-      ...currentTopic,
-      cards: updatedCards
-    };
-    updateCurrentTopic([updatedTopic]);
-    resetCardDrag();
+    
+    setDraggedCardIndex(null);
+    setDragOverCardIndex(null);
   };
 
   // Обработка свайпа и drag на мобильных устройствах
@@ -1926,8 +1952,8 @@ export default function FrenchFlashCardsApp() {
       return; // Позволить браузеру обработать скролл
     }
     
-    // Если движение больше 5px - считаем это свайпом (было 10px)
-    if (Math.abs(diff) > 5) {
+    // Если движение больше 10px - считаем это свайпом
+    if (Math.abs(diff) > 10) {
       setWasDragged(true);
       e.preventDefault(); // Блокируем скролл только при горизонтальном свайпе
     }
@@ -1943,7 +1969,7 @@ export default function FrenchFlashCardsApp() {
     const endTouch = e.changedTouches[0].clientX;
     const distance = endTouch - dragStart;
 
-    if (Math.abs(distance) > 30 && cards.length > 0 && wasDragged) {
+    if (Math.abs(distance) > 50 && cards.length > 0 && wasDragged) {
       setCanFlip(false);
       e.preventDefault();
       if (distance > 0) {
@@ -1978,8 +2004,8 @@ export default function FrenchFlashCardsApp() {
     if (!isDragging) return;
     
     const diff = e.clientX - dragStart;
-    // Если движение больше 5px - считаем это свайпом (было 10px)
-    if (Math.abs(diff) > 5) {
+    // Если движение больше 10px - считаем это свайпом
+    if (Math.abs(diff) > 10) {
       setWasDragged(true);
     }
     // Слегка уменьшаем смещение для более "липкого" ощущения
@@ -1992,7 +2018,7 @@ export default function FrenchFlashCardsApp() {
     setIsDragging(false);
     const distance = e.clientX - dragStart;
     
-    if (Math.abs(distance) > 30 && cards.length > 0 && wasDragged) {
+    if (Math.abs(distance) > 50 && cards.length > 0 && wasDragged) {
       setCanFlip(false);
       if (distance > 0) {
         // Свайп вправо → предыдущая карточка
@@ -2931,7 +2957,7 @@ export default function FrenchFlashCardsApp() {
 
   return (
     <>
-    <div className="min-h-screen py-28 px-8" style={{ backgroundColor: '#F6F2F2', paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}>
+    <div className="min-h-screen py-28 px-8" style={{ backgroundColor: '#F6F2F2' }}>
       <style>{`
         @keyframes spin {
           from {
@@ -2959,30 +2985,6 @@ export default function FrenchFlashCardsApp() {
         }
         .success-toast {
           animation: slideUp 0.3s ease-out;
-        }
-        /* Card touch drag support */
-        .card-item {
-          touch-action: none;
-          user-select: none;
-        }
-        .dragging-card {
-          opacity: 0.6;
-          background-color: #e8f4f8;
-          border: 1.5px dashed rgba(0, 0, 0, 0.3) !important;
-        }
-        .drop-target-card {
-          background-color: #f0f0f0;
-          border: 1.5px dashed rgba(0, 0, 0, 0.5) !important;
-          opacity: 0.7;
-        }
-        /* iOS Safe Area */
-        @supports (padding: max(0px)) {
-          body {
-            padding-bottom: max(1rem, env(safe-area-inset-bottom));
-            padding-top: env(safe-area-inset-top);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
-          }
         }
       `}</style>
 
@@ -3776,7 +3778,7 @@ export default function FrenchFlashCardsApp() {
 
             {/* Горизонтальный слайдер с карточками */}
             <div
-              className="overflow-hidden rounded-2xl relative mobile-614 mobile-slider flex items-center justify-center"
+              className="overflow-hidden rounded-2xl relative mobile-614 mobile-slider"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -3792,28 +3794,16 @@ export default function FrenchFlashCardsApp() {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              style={{ 
-                cursor: isDragging ? 'grabbing' : 'grab', 
-                width: '614px', 
-                height: '560px', 
-                touchAction: 'pan-y', 
-                userSelect: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              style={{ cursor: isDragging ? 'grabbing' : 'grab', width: '614px', height: '560px', touchAction: 'pan-y', userSelect: 'none' }}
             >
               {/* Контейнер слайдера */}
               <div
                 className="flex h-full transition-transform"
                 style={{
-                  transform: `translateX(calc(-${currentCardIndex * 100}% - ${currentCardIndex * 16}px + ${slideOffset}px))`,
+                  transform: `translateX(calc(${-currentCardIndex * 100}% + ${slideOffset}px))`,
                   transitionDuration: isDragging ? '0ms' : '300ms',
                   transitionTimingFunction: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
                   gap: '16px',
-                  width: '100%',
-                  display: 'flex',
-                  flexDirection: 'row',
                 }}
               >
                 {cards.map((card, idx) => (
@@ -3824,9 +3814,7 @@ export default function FrenchFlashCardsApp() {
                     style={{
                       padding: '0 16px',
                       boxSizing: 'border-box',
-                      userSelect: 'none',
-                      minWidth: '100%',
-                      minHeight: '100%',
+                      userSelect: 'none'
                     }}
                   >
                     <div
@@ -3927,35 +3915,18 @@ export default function FrenchFlashCardsApp() {
               }} className="text-black unified-section-header">
                 {cards.length} {cards.length === 1 ? 'word' : 'words'}
               </h2>
-              <div className="flex flex-col cards-list-container w-full" style={{ gap: '8px' }}>
+              <div className="flex flex-col" style={{ gap: '12px' }}>
                 {cards.map((card, idx) => (
                   <div
                     key={idx}
-                    data-position={idx}
-                    draggable
-                    onDragStart={(e) => onCardDragStart(e, idx)}
-                    onDragOver={(e) => onCardDragOver(e, idx)}
-                    onDrop={onCardDrop}
-                    onDragEnd={onCardDragEnd}
-                    onTouchStart={(e) => onCardTouchStart(e, idx)}
-                    onTouchMove={(e) => onCardTouchMove(e, idx)}
-                    onTouchEnd={onCardTouchEnd}
-                    className={`card-item flex items-center gap-4 transition ${
-                      draggedCardFrom === idx ? 'dragging-card' : ''
-                    } ${
-                      draggedCardTo === idx && draggedCardFrom !== idx ? 'drop-target-card' : ''
-                    }`}
                     style={{
-                      width: '100%',
                       border: '1.5px solid rgba(0, 0, 0, 0.08)',
                       boxSizing: 'border-box',
                       borderRadius: '20px',
                       overflow: 'visible',
                       padding: '0.9rem',
-                      cursor: draggedCardFrom === idx ? 'grabbing' : 'grab',
-                      userSelect: 'none',
-                      touchAction: 'none',
                     }}
+                    className="flex items-center gap-4 cursor-pointer hover:bg-black/2 transition"
                   >
                     {/* Left icon */}
                     <svg 
