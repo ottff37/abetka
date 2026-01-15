@@ -773,7 +773,9 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
       
       parts.forEach((part) => {
         for (const pronoun of pronouns) {
-          const regex = new RegExp(`^\\s*${pronoun}\\s+`, 'i');
+          const regex = pronoun === 'je'
+            ? /^\s*(?:je\s*(?:\/\s*j')?\s+|j')/i
+            : new RegExp(`^\\s*${pronoun}\\s+`, 'i');
           if (regex.test(part)) {
             const verbForm = part.replace(regex, '').trim();
             result[pronoun.toLowerCase()] = verbForm;
@@ -788,7 +790,9 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
       // Сначала ищем все позиции местоимений
       const pronounPositions = [];
       for (const pronoun of pronouns) {
-        const regex = new RegExp(`${pronoun}\\s+`, 'i');
+        const regex = pronoun === 'je'
+          ? /(je\s*(?:\/\s*j')?\s+|j')/i
+          : new RegExp(`${pronoun}\\s+`, 'i');
         const match = regex.exec(searchText);
         
         if (match) {
@@ -984,7 +988,9 @@ const ConjugationTable = ({ conjugation, word }) => {
       
       parts.forEach((part) => {
         for (const pronoun of pronouns) {
-          const regex = new RegExp(`^\\s*${pronoun}\\s+`, 'i');
+          const regex = pronoun === 'je'
+            ? /^\s*(?:je\s*(?:\/\s*j')?\s+|j')/i
+            : new RegExp(`^\\s*${pronoun}\\s+`, 'i');
           if (regex.test(part)) {
             const verbForm = part.replace(regex, '').trim();
             result[pronoun.toLowerCase()] = verbForm;
@@ -999,7 +1005,9 @@ const ConjugationTable = ({ conjugation, word }) => {
       // Сначала ищем все позиции местоимений
       const pronounPositions = [];
       for (const pronoun of pronouns) {
-        const regex = new RegExp(`${pronoun}\\s+`, 'i');
+        const regex = pronoun === 'je'
+          ? /(je\s*(?:\/\s*j')?\s+|j')/i
+          : new RegExp(`${pronoun}\\s+`, 'i');
         const match = regex.exec(searchText);
         
         if (match) {
