@@ -5,11 +5,11 @@ if (typeof document !== 'undefined') {
   // Set viewport to prevent zoom
   let viewport = document.querySelector('meta[name="viewport"]');
   if (viewport) {
-    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0');
+    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover');
   } else {
     viewport = document.createElement('meta');
     viewport.name = 'viewport';
-    viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0';
+    viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover';
     document.head.appendChild(viewport);
   }
   
@@ -25,6 +25,7 @@ if (typeof document !== 'undefined') {
       background-color: #F6F2F2;
       -webkit-user-select: none;
       user-select: none;
+      padding-bottom: env(safe-area-inset-bottom);
     }
     
     input, button, textarea, select {
@@ -516,7 +517,6 @@ if (typeof document !== 'undefined') {
       outline-style: none !important;
       outline-offset: 0 !important;
       box-shadow: none !important;
-      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
       -webkit-focus-ring-color: transparent !important;
     }
     
@@ -526,15 +526,20 @@ if (typeof document !== 'undefined') {
       outline-style: none !important;
       outline-offset: 0 !important;
       box-shadow: none !important;
-      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
       -webkit-focus-ring-color: transparent !important;
+    }
+    
+    /* Mobile keyboard handling */
+    @supports (padding-bottom: max(0px)) {
+      body {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
     }
     
     input:-webkit-autofill:focus {
       outline: none !important;
       outline-width: 0 !important;
       box-shadow: none !important;
-      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
       -webkit-focus-ring-color: transparent !important;
     }
     
@@ -542,7 +547,6 @@ if (typeof document !== 'undefined') {
       outline: none !important;
       outline-width: 0 !important;
       box-shadow: none !important;
-      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
     }
     
     /* Slider container - reset margins and padding */
@@ -900,6 +904,8 @@ export default function FrenchFlashCardsApp() {
   const [dragOverCardIndex, setDragOverCardIndex] = useState(null);
   const [touchDragTopicId, setTouchDragTopicId] = useState(null);
   const [touchDragOverTopicId, setTouchDragOverTopicId] = useState(null);
+  const [pointerDownTopic, setPointerDownTopic] = useState(null);
+  const [pointerDownTime, setPointerDownTime] = useState(null);
   const [editablePartOfSpeech, setEditablePartOfSpeech] = useState('');
   const [editableTypeOfWord, setEditableTypeOfWord] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -1283,7 +1289,10 @@ export default function FrenchFlashCardsApp() {
       }
     } catch (error) {
       console.error('Ошибка при переводе:', error);
-      addError(`Error: ${error.message}`);
+      const errorMessage = error.message.includes('quota') || error.message.includes('rate') 
+        ? 'Лимит исчерпан. Попробуйте позже.'
+        : `Error: ${error.message}`;
+      addError(errorMessage);
       clearTranslation();
     } finally {
       setLoadingTranslation(false);
@@ -1665,20 +1674,26 @@ export default function FrenchFlashCardsApp() {
     setDragOverTopicId(null);
   };
 
-  // Touch-based drag and drop для тем на мобильных
-  const handleTopicTouchStart = (e, topicId) => {
-    setTouchDragTopicId(topicId);
+  // Drag and drop для тем на мобильных используя pointer events
+  const handleTopicPointerDown = (e, topicId) => {
+    // Только для сенсорного ввода (touch)
+    if (e.pointerType === 'touch') {
+      setPointerDownTopic(topicId);
+      setPointerDownTime(Date.now());
+      setTouchDragTopicId(topicId);
+      console.log('Pointer down on topic:', topicId);
+    }
   };
 
-  const handleTopicTouchMove = (e, topicId) => {
-    if (!touchDragTopicId) {
+  const handleTopicPointerMove = (e, topicId) => {
+    if (!touchDragTopicId || e.pointerType !== 'touch') {
       return;
     }
     
     e.preventDefault();
     
     try {
-      const currentY = e.touches[0].clientY;
+      const currentY = e.clientY;
       
       const topicsList = document.querySelector('.topic-list-container');
       if (!topicsList) return;
@@ -1711,18 +1726,22 @@ export default function FrenchFlashCardsApp() {
         }
       }
       
-      // Если палец не над элементом, убираем feedback
       if (!foundElement) {
         setTouchDragOverTopicId(null);
       }
     } catch (error) {
-      console.error('Error in handleTopicTouchMove:', error);
+      console.error('Error in handleTopicPointerMove:', error);
     }
   };
 
-  const handleTopicTouchEnd = (e) => {
-    setTouchDragTopicId(null);
-    setTouchDragOverTopicId(null);
+  const handleTopicPointerUp = (e) => {
+    if (e.pointerType === 'touch') {
+      console.log('Pointer up - clearing drag state');
+      setPointerDownTopic(null);
+      setPointerDownTime(null);
+      setTouchDragTopicId(null);
+      setTouchDragOverTopicId(null);
+    }
   };
 
   // Drag and drop для карточек слов
@@ -2165,13 +2184,13 @@ export default function FrenchFlashCardsApp() {
                       }}
                       onDragLeave={handleTopicDragLeave}
                       onDragEnd={handleTopicDragEnd}
-                      onTouchStart={(e) => {
-                        handleTopicTouchStart(e, topic.id);
+                      onPointerDown={(e) => {
+                        handleTopicPointerDown(e, topic.id);
                       }}
-                      onTouchMove={(e) => {
-                        handleTopicTouchMove(e, topic.id);
+                      onPointerMove={(e) => {
+                        handleTopicPointerMove(e, topic.id);
                       }}
-                      onTouchEnd={handleTopicTouchEnd}
+                      onPointerUp={handleTopicPointerUp}
                       onClick={() => {
                         setCurrentTopic(topic);
                         setCurrentCardIndex(0);
@@ -2955,9 +2974,10 @@ export default function FrenchFlashCardsApp() {
           >
             <div style={{
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: '12px',
               flex: 1,
+              minWidth: 0,
             }}>
               <svg width="24" height="24" viewBox="0 -960 960 960" fill="#7f1d1d" style={{ flexShrink: 0 }}>
                 <path d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
@@ -2968,6 +2988,9 @@ export default function FrenchFlashCardsApp() {
                 fontWeight: '500',
                 lineHeight: '24px',
                 color: '#7f1d1d',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word',
+                whiteSpace: 'normal',
               }}>
                 {error.message}
               </div>
@@ -3175,8 +3198,9 @@ export default function FrenchFlashCardsApp() {
         <div className="bg-white mobile-614 mobile-section-spacing mobile-word-form w-full" style={{ 
           borderRadius: '24px', 
           maxWidth: '614px', 
-          margin: '72px auto 0 auto',
-          padding: '32px'
+          margin: '32px auto 0 auto',
+          padding: '32px',
+          height: 'fit-content',
         }}>
           <div className="flex flex-col" style={{ gap: '12px' }}>
             
@@ -3202,14 +3226,11 @@ export default function FrenchFlashCardsApp() {
                     flex: 1,
                     minWidth: 0,
                     height: '56px',
-                    padding: '0 20px',
-                    borderRadius: '12px',
-                    border: '1.5px solid rgba(0, 0, 0, 0.08)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     boxSizing: 'border-box',
-                    backgroundColor: '#ffffff',
+                    gap: '8px',
                   }}>
                     <input
                       ref={inputRef}
@@ -3217,6 +3238,12 @@ export default function FrenchFlashCardsApp() {
                       value={searchInput}
                       onChange={(e) => {
                         setSearchInput(e.target.value);
+                      }}
+                      onFocus={(e) => {
+                        // Скроллим input в видимую область когда он получает фокус
+                        setTimeout(() => {
+                          e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
                       }}
                       onKeyPress={(e) => {
                         if (e.key === 'Enter' && searchInput.trim() && !loadingTranslation) {
@@ -3228,7 +3255,7 @@ export default function FrenchFlashCardsApp() {
                       style={{
                         flex: 1,
                         minWidth: 0,
-                        border: 'none',
+                        border: '1.5px solid rgba(0, 0, 0, 0.12)',
                         fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                         fontSize: '16px',
                         fontWeight: '500',
@@ -3238,8 +3265,10 @@ export default function FrenchFlashCardsApp() {
                         color: '#000000',
                         colorScheme: 'light',
                         outline: 'none',
-                        backgroundColor: 'transparent',
+                        backgroundColor: '#ffffff',
                         height: '56px',
+                        padding: '0 20px',
+                        borderRadius: '12px',
                         display: 'flex',
                         alignItems: 'center',
                       }}
@@ -3334,7 +3363,7 @@ export default function FrenchFlashCardsApp() {
                       height: '56px',
                       padding: '0 20px',
                       borderRadius: '12px',
-                      border: '1.5px solid rgba(0, 0, 0, 0.08)',
+                      border: '1.5px solid rgba(0, 0, 0, 0.12)',
                       fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                       fontSize: '16px',
                       fontWeight: '500',
@@ -3375,7 +3404,7 @@ export default function FrenchFlashCardsApp() {
                       height: '56px',
                       padding: '0 20px',
                       borderRadius: '12px',
-                      border: '1.5px solid rgba(0, 0, 0, 0.08)',
+                      border: '1.5px solid rgba(0, 0, 0, 0.12)',
                       fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                       fontSize: '16px',
                       fontWeight: '500',
@@ -3418,7 +3447,7 @@ export default function FrenchFlashCardsApp() {
                           height: '56px',
                           padding: '0 20px',
                           borderRadius: '12px',
-                          border: '1.5px solid rgba(0, 0, 0, 0.08)',
+                          border: '1.5px solid rgba(0, 0, 0, 0.12)',
                           fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                           fontSize: '16px',
                           fontWeight: '500',
@@ -3459,7 +3488,7 @@ export default function FrenchFlashCardsApp() {
                           height: '56px',
                           padding: '0 20px',
                           borderRadius: '12px',
-                          border: '1.5px solid rgba(0, 0, 0, 0.08)',
+                          border: '1.5px solid rgba(0, 0, 0, 0.12)',
                           fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                           fontSize: '16px',
                           fontWeight: '500',
