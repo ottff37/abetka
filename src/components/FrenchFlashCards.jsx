@@ -2866,7 +2866,7 @@ export default function FrenchFlashCardsApp() {
 
   return (
     <>
-    <div className="min-h-screen py-28 px-8" style={{ backgroundColor: '#F6F2F2' }}>
+    <div className="min-h-screen py-28 px-8" style={{ backgroundColor: '#F6F2F2', paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}>
       <style>{`
         @keyframes spin {
           from {
@@ -2894,6 +2894,15 @@ export default function FrenchFlashCardsApp() {
         }
         .success-toast {
           animation: slideUp 0.3s ease-out;
+        }
+        /* iOS Safe Area */
+        @supports (padding: max(0px)) {
+          body {
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+            padding-top: env(safe-area-inset-top);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+          }
         }
       `}</style>
 
