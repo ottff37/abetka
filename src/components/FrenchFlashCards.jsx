@@ -3810,7 +3810,6 @@ export default function FrenchFlashCardsApp() {
                   transform: `translateX(calc(${-currentCardIndex * 100}% + ${slideOffset}px))`,
                   transitionDuration: isDragging ? '0ms' : '300ms',
                   transitionTimingFunction: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
-                  gap: '16px',
                   width: '100%',
                   display: 'flex',
                   flexDirection: 'row',
@@ -3822,7 +3821,7 @@ export default function FrenchFlashCardsApp() {
                     className="flex-shrink-0 w-full h-full flex items-center justify-center"
                     onClick={() => canFlip && !isDragging && setFlipped(!flipped)}
                     style={{
-                      padding: '0 16px',
+                      padding: '0 24px',
                       boxSizing: 'border-box',
                       userSelect: 'none',
                       minWidth: '100%',
