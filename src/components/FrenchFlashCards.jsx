@@ -1999,20 +1999,23 @@ export default function FrenchFlashCardsApp() {
     e.preventDefault();
     e.stopPropagation();
     
+    if (!currentTopic) {
+      setDraggedCardIndex(null);
+      setDragOverCardIndex(null);
+      return;
+    }
+
     if (draggedCardIndex !== null && draggedCardIndex !== targetCardIndex) {
-      const newCards = [...cards];
+      const newCards = [...(currentTopic.cards || [])];
       const [draggedCard] = newCards.splice(draggedCardIndex, 1);
       newCards.splice(targetCardIndex, 0, draggedCard);
-      
-      setCards(newCards);
-      
-      // Update cards in current topic
-      if (currentTopic) {
-        const updatedTopics = topics.map(t => 
-          t.id === currentTopic.id ? { ...t, cards: newCards } : t
-        );
-        updateTopics(updatedTopics);
-      }
+
+      // Update cards in current topic + persist to storage
+      const updatedTopics = topics.map(t =>
+        t.id === currentTopic.id ? { ...t, cards: newCards } : t
+      );
+      updateTopics(updatedTopics);
+      setCurrentTopic(prev => (prev ? { ...prev, cards: newCards } : prev));
     }
     
     setDraggedCardIndex(null);
@@ -2166,34 +2169,36 @@ export default function FrenchFlashCardsApp() {
         const imported = JSON.parse(e.target.result);
         
         if (imported.words && Array.isArray(imported.words)) {
-          const updated = topics.map(topic => {
+          const updatedTopics = topics.map(topic => {
             if (topic.id === currentTopic.id) {
               return {
                 ...topic,
-                cards: [...topic.cards, ...imported.words]
+                cards: [...(topic.cards || []), ...imported.words]
               };
             }
             return topic;
           });
 
-          setTopics(updated);
-          saveTopics(updated);
-          
-          const updatedTopic = updated.find(t => t.id === currentTopic.id);
-          setCurrentTopic(updatedTopic);
-          
-          alert(`✅ Успешно импортировано ${imported.words.length} слов в тему "${currentTopic.name}"!`);
+          updateTopics(updatedTopics);
+          const updatedTopic = updatedTopics.find(t => t.id === currentTopic.id);
+          if (updatedTopic) setCurrentTopic(updatedTopic);
+
+          addSuccess(`Imported ${imported.words.length} word${imported.words.length !== 1 ? 's' : ''} to "${currentTopic.name}"!`);
         } else {
-          alert('❌ Неверный формат файла. Пожалуйста, используйте файл, экспортированный из приложения.');
+          addError('Invalid file format. Please use a file exported from the app.');
         }
       } catch (error) {
-        alert(`❌ Ошибка при чтении файла: ${error.message}`);
+        addError(`Error reading file: ${error.message}`);
       }
     };
     reader.readAsText(file);
 
     // Очищаем input
-    event.target.value = '';
+    try {
+      event.target.value = '';
+    } catch (e) {
+      // ignore
+    }
   };
 
   // Drag handlers for import - available everywhere
@@ -2665,7 +2670,7 @@ export default function FrenchFlashCardsApp() {
                           }
                         }
                       }}
-                      placeholder="Starts with Alza"
+                      placeholder="Starts with AIza"
                       style={{
                         width: '100%',
                         height: '56px',
@@ -4205,7 +4210,7 @@ export default function FrenchFlashCardsApp() {
                           }
                         }
                       }}
-                      placeholder="Starts with Alza"
+                      placeholder="Starts with AIza"
                       style={{
                         width: '100%',
                         height: '56px',
