@@ -684,9 +684,16 @@ const InfoTable = ({ partOfSpeech, gender }) => {
 };
 
 // Компонент для таблицы на белом фоне (обратная сторона карточки)
-const ConjugationTableWhite = ({ conjugation, word }) => {
+const ConjugationTableWhite = ({ conjugation, word, isEditable = false, onEditableFormsChange }) => {
   const [editableForms, setEditableForms] = React.useState({});
   const cellRefs = React.useRef({});
+  
+  // Отправляем отредактированные формы наружу когда они меняются
+  React.useEffect(() => {
+    if (onEditableFormsChange && Object.keys(editableForms).length > 0) {
+      onEditableFormsChange(editableForms);
+    }
+  }, [editableForms, onEditableFormsChange]);
   
   const lines = conjugation.split('\n');
   const formsStart = lines.findIndex(line => !line.startsWith('Часть речи:') && !line.startsWith('Род:') && line.trim());
@@ -897,11 +904,11 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
                 {form.pronoun}
               </td>
               <td 
-                contentEditable
+                contentEditable={isEditable}
                 suppressContentEditableWarning
-                className="text-left cursor-text"
-                onKeyDown={(e) => handleKeyDown(e, form.pronoun)}
-                onInput={(e) => handleChange(e, form.pronoun)}
+                className={`text-left ${isEditable ? 'cursor-text' : 'cursor-default'}`}
+                onKeyDown={isEditable ? (e) => handleKeyDown(e, form.pronoun) : undefined}
+                onInput={isEditable ? (e) => handleChange(e, form.pronoun) : undefined}
                 ref={(el) => {
                   cellRefs.current[form.pronoun] = el;
                   if (el && !editableForms[form.pronoun] && form.verbForm) {
@@ -917,9 +924,10 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
                   padding: '12px 16px',
                   flex: 1,
                   textTransform: 'capitalize',
-                  outline: 'none',
+                  outline: isEditable ? 'none' : 'none',
                   minHeight: '20px',
-                  backgroundColor: editableForms[form.pronoun] ? 'rgba(200, 220, 255, 0.3)' : 'transparent'
+                  backgroundColor: isEditable && editableForms[form.pronoun] ? 'rgba(200, 220, 255, 0.3)' : 'transparent',
+                  userSelect: isEditable ? 'text' : 'none'
                 }}
               />
             </tr>
@@ -1154,6 +1162,7 @@ export default function FrenchFlashCardsApp() {
   const [newFrench, setNewFrench] = useState('');
   const [newRussian, setNewRussian] = useState('');
   const [conjugation, setConjugation] = useState(null);
+  const [editableForms, setEditableForms] = useState({});
   const [loadingTranslation, setLoadingTranslation] = useState(false);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [wordsAddedCount, setWordsAddedCount] = useState(0);
@@ -1425,6 +1434,7 @@ export default function FrenchFlashCardsApp() {
   const clearTranslation = () => {
     setNewRussian('');
     setConjugation(null);
+    setEditableForms({});
   };
 
   // Парсинг response и построение conjugationText
@@ -1638,7 +1648,7 @@ export default function FrenchFlashCardsApp() {
 
     // Обновляем conjugation с отредактированными значениями
     let updatedConjugation = conjugation;
-    if (conjugation && (editablePartOfSpeech || editableTypeOfWord)) {
+    if (conjugation && (editablePartOfSpeech || editableTypeOfWord || Object.keys(editableForms).length > 0)) {
       let newConjugation = conjugation;
       if (editablePartOfSpeech) {
         newConjugation = newConjugation.replace(/Часть речи: [^\n]+/, `Часть речи: ${editablePartOfSpeech}`);
@@ -1646,6 +1656,31 @@ export default function FrenchFlashCardsApp() {
       if (editableTypeOfWord) {
         newConjugation = newConjugation.replace(/Род: [^\n]+/, `Род: ${editableTypeOfWord}`);
       }
+      
+      // Заменяем отредактированные формы в conjugation
+      if (Object.keys(editableForms).length > 0) {
+        const lines = newConjugation.split('\n');
+        const formsStart = lines.findIndex(line => !line.startsWith('Часть речи:') && !line.startsWith('Род:') && line.trim());
+        
+        if (formsStart !== -1) {
+          const formLines = [];
+          const pronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'];
+          
+          // Строим новые строки спряжения
+          for (const pronoun of pronouns) {
+            if (editableForms[pronoun]) {
+              // Удаляем HTML теги для сохранения
+              const cleanForm = editableForms[pronoun].replace(/<[^>]*>/g, '');
+              formLines.push(cleanForm);
+            } else if (lines[formsStart + pronouns.indexOf(pronoun)]) {
+              formLines.push(lines[formsStart + pronouns.indexOf(pronoun)]);
+            }
+          }
+          
+          newConjugation = lines.slice(0, formsStart).join('\n') + '\n' + formLines.join('\n');
+        }
+      }
+      
       updatedConjugation = newConjugation;
     }
 
@@ -3835,6 +3870,8 @@ export default function FrenchFlashCardsApp() {
                       <ConjugationTableWhite 
                         conjugation={conjugation}
                         word={newFrench}
+                        isEditable={true}
+                        onEditableFormsChange={setEditableForms}
                       />
                     </div>
                   )}
@@ -3850,6 +3887,7 @@ export default function FrenchFlashCardsApp() {
                     setConjugation(null);
                     setEditablePartOfSpeech('');
                     setEditableTypeOfWord('');
+                    setEditableForms({});
                   }}
                   style={{
                     width: '56px',
@@ -4039,6 +4077,7 @@ export default function FrenchFlashCardsApp() {
                             <ConjugationTableWhite 
                               conjugation={card.conjugation}
                               word={card.french}
+                              isEditable={false}
                             />
                           </div>
                         )}
