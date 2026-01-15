@@ -762,8 +762,13 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
     
     const pronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'];
     
-    // Разбиваем по запятым
+    // Сначала пытаемся разделить по запятым
     let parts = text.split(',').map(p => p.trim()).filter(p => p);
+    
+    // Если получили мало частей (меньше 2), пробуем разделить по новым строкам
+    if (parts.length < 2) {
+      parts = text.split(/[\n\r]+/).map(p => p.trim()).filter(p => p);
+    }
     
     // Парсим каждую часть
     parts.forEach((part) => {
@@ -946,8 +951,13 @@ const ConjugationTable = ({ conjugation, word }) => {
     
     const pronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'];
     
-    // Разбиваем по запятым
+    // Сначала пытаемся разделить по запятым
     let parts = text.split(',').map(p => p.trim()).filter(p => p);
+    
+    // Если получили мало частей (меньше 2), пробуем разделить по новым строкам
+    if (parts.length < 2) {
+      parts = text.split(/[\n\r]+/).map(p => p.trim()).filter(p => p);
+    }
     
     // Парсим каждую часть
     parts.forEach((part) => {
