@@ -892,7 +892,6 @@ export default function FrenchFlashCardsApp() {
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [dragOverCardIndex, setDragOverCardIndex] = useState(null);
   const [touchDragTopicId, setTouchDragTopicId] = useState(null);
-  const [touchDragStartY, setTouchDragStartY] = useState(null);
   const [touchDragOverTopicId, setTouchDragOverTopicId] = useState(null);
   const [editablePartOfSpeech, setEditablePartOfSpeech] = useState('');
   const [editableTypeOfWord, setEditableTypeOfWord] = useState('');
@@ -1620,26 +1619,17 @@ export default function FrenchFlashCardsApp() {
     }
   };
 
-  // Обработчики для drag and drop переупорядочивания тем
+  // Обработчики для drag and drop переупорядочивания тем - простой способ
   const handleTopicDragStart = (e, topicId) => {
     setDraggedTopicId(topicId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleTopicDragOver = (e, topicId) => {
+  const handleTopicDragOver = (e, targetTopicId) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverTopicId(topicId);
-  };
-
-  const handleTopicDragLeave = () => {
-    setDragOverTopicId(null);
-  };
-
-  const handleTopicDrop = (e, targetTopicId) => {
-    e.preventDefault();
-    e.stopPropagation();
     
+    // Сразу меняем порядок при dragover (как в примере)
     if (draggedTopicId && draggedTopicId !== targetTopicId) {
       const draggedIndex = topics.findIndex(t => t.id === draggedTopicId);
       const targetIndex = topics.findIndex(t => t.id === targetTopicId);
@@ -1649,10 +1639,21 @@ export default function FrenchFlashCardsApp() {
         const [draggedTopic] = newTopics.splice(draggedIndex, 1);
         newTopics.splice(targetIndex, 0, draggedTopic);
         
+        setDraggedTopicId(draggedTopic.id); // Обновляем ID в случае если его переставили
         updateTopics(newTopics);
       }
     }
     
+    // Добавляем визуальный feedback
+    setDragOverTopicId(targetTopicId);
+  };
+
+  const handleTopicDragLeave = () => {
+    setDragOverTopicId(null);
+  };
+
+  const handleTopicDragEnd = (e) => {
+    e.preventDefault();
     setDraggedTopicId(null);
     setDragOverTopicId(null);
   };
@@ -1660,53 +1661,44 @@ export default function FrenchFlashCardsApp() {
   // Touch-based drag and drop для тем на мобильных
   const handleTopicTouchStart = (e, topicId) => {
     setTouchDragTopicId(topicId);
-    setTouchDragStartY(e.touches[0].clientY);
   };
 
   const handleTopicTouchMove = (e, topicId) => {
-    if (!touchDragTopicId || touchDragStartY === null) return;
+    if (!touchDragTopicId) return;
     
     const currentY = e.touches[0].clientY;
-    const diff = currentY - touchDragStartY;
     
-    // Если движение больше 5px, начинаем drag
-    if (Math.abs(diff) > 5) {
-      e.preventDefault();
-      
-      // Находим элемент под пальцем
-      const allTopicElements = Array.from(document.querySelectorAll('.topic-item'));
-      for (let element of allTopicElements) {
-        const rect = element.getBoundingClientRect();
-        if (currentY >= rect.top && currentY <= rect.bottom) {
-          const hoveredId = element.getAttribute('data-topic-id');
-          if (hoveredId && hoveredId !== touchDragTopicId) {
-            setTouchDragOverTopicId(hoveredId);
+    // Находим элемент под пальцем
+    const allTopicElements = Array.from(document.querySelectorAll('.topic-item'));
+    for (let element of allTopicElements) {
+      const rect = element.getBoundingClientRect();
+      if (currentY >= rect.top && currentY <= rect.bottom) {
+        const hoveredId = element.getAttribute('data-topic-id');
+        
+        // Сразу меняем порядок как в примере
+        if (hoveredId && hoveredId !== touchDragTopicId) {
+          const draggedIndex = topics.findIndex(t => t.id === touchDragTopicId);
+          const targetIndex = topics.findIndex(t => t.id === hoveredId);
+          
+          if (draggedIndex !== -1 && targetIndex !== -1) {
+            const newTopics = [...topics];
+            const [draggedTopic] = newTopics.splice(draggedIndex, 1);
+            newTopics.splice(targetIndex, 0, draggedTopic);
+            
+            setTouchDragTopicId(draggedTopic.id);
+            updateTopics(newTopics);
           }
-          break;
         }
+        
+        // Добавляем визуальный feedback
+        setTouchDragOverTopicId(hoveredId);
+        break;
       }
     }
   };
 
   const handleTopicTouchEnd = (e) => {
-    if (!touchDragTopicId) return;
-    
-    // Выполняем перестановку если нужно
-    if (touchDragOverTopicId && touchDragOverTopicId !== touchDragTopicId) {
-      const draggedIndex = topics.findIndex(t => t.id === touchDragTopicId);
-      const targetIndex = topics.findIndex(t => t.id === touchDragOverTopicId);
-      
-      if (draggedIndex !== -1 && targetIndex !== -1) {
-        const newTopics = [...topics];
-        const [draggedTopic] = newTopics.splice(draggedIndex, 1);
-        newTopics.splice(targetIndex, 0, draggedTopic);
-        
-        updateTopics(newTopics);
-      }
-    }
-    
     setTouchDragTopicId(null);
-    setTouchDragStartY(null);
     setTouchDragOverTopicId(null);
   };
 
@@ -2146,18 +2138,10 @@ export default function FrenchFlashCardsApp() {
                         handleTopicDragStart(e, topic.id);
                       }}
                       onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                        if (draggedTopicId) {
-                          handleTopicDragOver(e, topic.id);
-                        }
+                        handleTopicDragOver(e, topic.id);
                       }}
                       onDragLeave={handleTopicDragLeave}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleTopicDrop(e, topic.id);
-                      }}
+                      onDragEnd={handleTopicDragEnd}
                       onTouchStart={(e) => {
                         handleTopicTouchStart(e, topic.id);
                       }}
@@ -2176,12 +2160,12 @@ export default function FrenchFlashCardsApp() {
                           : '1.5px solid rgba(0, 0, 0, 0.08)',
                         boxSizing: 'border-box',
                         borderRadius: '24px',
-                        backgroundColor: (dragOverTopicId === topic.id || touchDragOverTopicId === topic.id) && (draggedTopicId !== topic.id && touchDragTopicId !== topic.id) ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
-                        opacity: (draggedTopicId === topic.id || touchDragTopicId === topic.id) ? 0.6 : 1,
+                        backgroundColor: (dragOverTopicId === topic.id || touchDragOverTopicId === topic.id) ? 'rgba(0, 0, 0, 0.06)' : 'transparent',
+                        opacity: (draggedTopicId === topic.id || touchDragTopicId === topic.id) ? 0.5 : 1,
                         userSelect: 'none',
                         WebkitUserSelect: 'none',
-                        touchAction: touchDragTopicId === topic.id ? 'none' : 'auto',
-                        transition: 'all 0.2s ease',
+                        touchAction: 'none',
+                        transition: 'all 0.15s ease',
                       }}
                       className="p-4 flex items-center gap-4 cursor-pointer hover:bg-black/2"
                     >
