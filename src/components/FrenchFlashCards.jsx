@@ -1926,8 +1926,8 @@ export default function FrenchFlashCardsApp() {
       return; // Позволить браузеру обработать скролл
     }
     
-    // Если движение больше 10px - считаем это свайпом
-    if (Math.abs(diff) > 10) {
+    // Если движение больше 5px - считаем это свайпом (было 10px)
+    if (Math.abs(diff) > 5) {
       setWasDragged(true);
       e.preventDefault(); // Блокируем скролл только при горизонтальном свайпе
     }
@@ -1943,7 +1943,7 @@ export default function FrenchFlashCardsApp() {
     const endTouch = e.changedTouches[0].clientX;
     const distance = endTouch - dragStart;
 
-    if (Math.abs(distance) > 50 && cards.length > 0 && wasDragged) {
+    if (Math.abs(distance) > 30 && cards.length > 0 && wasDragged) {
       setCanFlip(false);
       e.preventDefault();
       if (distance > 0) {
@@ -1978,8 +1978,8 @@ export default function FrenchFlashCardsApp() {
     if (!isDragging) return;
     
     const diff = e.clientX - dragStart;
-    // Если движение больше 10px - считаем это свайпом
-    if (Math.abs(diff) > 10) {
+    // Если движение больше 5px - считаем это свайпом (было 10px)
+    if (Math.abs(diff) > 5) {
       setWasDragged(true);
     }
     // Слегка уменьшаем смещение для более "липкого" ощущения
@@ -1992,7 +1992,7 @@ export default function FrenchFlashCardsApp() {
     setIsDragging(false);
     const distance = e.clientX - dragStart;
     
-    if (Math.abs(distance) > 50 && cards.length > 0 && wasDragged) {
+    if (Math.abs(distance) > 30 && cards.length > 0 && wasDragged) {
       setCanFlip(false);
       if (distance > 0) {
         // Свайп вправо → предыдущая карточка
