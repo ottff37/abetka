@@ -841,6 +841,7 @@ export default function FrenchFlashCardsApp() {
   const [successes, setSuccesses] = useState([]);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [touchStartY, setTouchStartY] = useState(null);
   const [mouseDown, setMouseDown] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [slideOffset, setSlideOffset] = useState(0);
@@ -1660,6 +1661,7 @@ export default function FrenchFlashCardsApp() {
   const handleTouchStart = (e) => {
     setTouchStart(e.targetTouches[0].clientX);
     setDragStart(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
     setIsDragging(true);
   };
 
@@ -1667,11 +1669,19 @@ export default function FrenchFlashCardsApp() {
     if (!isDragging || !dragStart) return;
     
     const currentTouch = e.targetTouches[0].clientX;
+    const currentY = e.targetTouches[0].clientY;
     const diff = currentTouch - dragStart;
+    const diffY = Math.abs(currentY - (touchStartY || 0));
+    
+    // Если вертикальное движение больше горизонтального - это скролл
+    if (diffY > Math.abs(diff)) {
+      return; // Позволить браузеру обработать скролл
+    }
     
     // Если движение больше 10px - считаем это свайпом
     if (Math.abs(diff) > 10) {
       setWasDragged(true);
+      e.preventDefault(); // Блокируем скролл только при горизонтальном свайпе
     }
     
     setSlideOffset(diff * 0.5);
@@ -1681,6 +1691,7 @@ export default function FrenchFlashCardsApp() {
     if (!isDragging) return;
     
     setIsDragging(false);
+    setTouchStartY(null);
     const endTouch = e.changedTouches[0].clientX;
     const distance = endTouch - dragStart;
 
@@ -3462,7 +3473,7 @@ export default function FrenchFlashCardsApp() {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              style={{ cursor: isDragging ? 'grabbing' : 'grab', width: '614px', height: '560px', touchAction: 'none', userSelect: 'none' }}
+              style={{ cursor: isDragging ? 'grabbing' : 'grab', width: '614px', height: '560px', touchAction: 'pan-y', userSelect: 'none' }}
             >
               {/* Контейнер слайдера */}
               <div
@@ -3593,7 +3604,7 @@ export default function FrenchFlashCardsApp() {
                       borderRadius: '24px',
                       overflow: 'visible',
                     }}
-                    className="p-4 flex items-center gap-4 hover:bg-black/2 transition"
+                    className="p-4 flex items-center gap-4 cursor-pointer hover:bg-black/2 transition"
                   >
                     {/* Left icon */}
                     <svg 
@@ -3638,11 +3649,11 @@ export default function FrenchFlashCardsApp() {
                         e.preventDefault();
                         deleteCard(idx);
                       }}
-                      className="delete-card-button"
+                      className="text-black/50 hover:text-red-500 transition flex-shrink-0"
                     >
                       <svg 
-                        width="24" 
-                        height="24" 
+                        width="32" 
+                        height="56" 
                         viewBox="0 0 32 56" 
                         fill="none" 
                         xmlns="http://www.w3.org/2000/svg"
