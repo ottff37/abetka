@@ -897,7 +897,11 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
                 suppressContentEditableWarning
                 className="text-left cursor-text"
                 onKeyDown={(e) => handleKeyDown(e, form.pronoun)}
+                onBlur={(e) => handleChange(e, form.pronoun)}
                 onInput={(e) => handleChange(e, form.pronoun)}
+                dangerouslySetInnerHTML={{
+                  __html: editableForms[form.pronoun] !== undefined ? editableForms[form.pronoun] : highlighted
+                }}
                 style={{
                   borderTopRightRadius: isFirst ? '16px' : '0',
                   borderBottomRightRadius: isLast ? '16px' : '0',
@@ -908,11 +912,10 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
                   flex: 1,
                   textTransform: 'capitalize',
                   outline: 'none',
-                  minHeight: '20px'
+                  minHeight: '20px',
+                  backgroundColor: editableForms[form.pronoun] !== undefined ? 'rgba(200, 220, 255, 0.3)' : 'transparent'
                 }}
-              >
-                {editableForms[form.pronoun] !== undefined ? editableForms[form.pronoun] : highlighted}
-              </td>
+              />
             </tr>
           );
         })}
@@ -1113,11 +1116,17 @@ const ConjugationTable = ({ conjugation, word }) => {
                 suppressContentEditableWarning
                 className="py-4 px-4 text-left cursor-text"
                 onKeyDown={(e) => handleKeyDown(e, form.pronoun)}
+                onBlur={(e) => handleChange(e, form.pronoun)}
                 onInput={(e) => handleChange(e, form.pronoun)}
-                style={{ outline: 'none', minHeight: '20px' }}
-              >
-                {editableForms[form.pronoun] !== undefined ? editableForms[form.pronoun] : highlighted}
-              </td>
+                dangerouslySetInnerHTML={{
+                  __html: editableForms[form.pronoun] !== undefined ? editableForms[form.pronoun] : highlighted
+                }}
+                style={{ 
+                  outline: 'none', 
+                  minHeight: '20px',
+                  backgroundColor: editableForms[form.pronoun] !== undefined ? 'rgba(200, 220, 255, 0.3)' : 'transparent'
+                }}
+              />
             </tr>
           );
         })}
