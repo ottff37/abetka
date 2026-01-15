@@ -762,84 +762,46 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
     
     const pronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'];
     
-    // Сначала пытаемся разбить по запятым (если есть)
-    let parts = text.includes(',') 
-      ? text.split(',').map(p => p.trim()).filter(p => p)
-      : [text];
+    // Разбиваем по запятым
+    let parts = text.split(',').map(p => p.trim()).filter(p => p);
     
-    // Если не разбилось по запятым или только одна часть, 
-    // пытаемся найти местоимения в начале слов
-    if (parts.length === 1) {
-      // Ищем все вхождения местоимений в тексте
-      const foundPronounPositions = [];
+    // Парсим каждую часть
+    parts.forEach((part) => {
+      if (!part) return;
       
+      // Пытаемся найти местоимение в начале этой части
+      let foundPronoun = null;
+      let foundVerbForm = null;
+      
+      // Проверяем каждое местоимение
       for (const pronoun of pronouns) {
-        // Ищем местоимение как отдельное слово
-        const regex = new RegExp(`(\b${pronoun}\b)\s+`, 'gi');
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          foundPronounPositions.push({
-            pronoun: pronoun.toLowerCase(),
-            position: match.index,
-            endPosition: regex.lastIndex
+        // Ищем местоимение в начале строки (case-insensitive)
+        const regex = new RegExp(`^\s*${pronoun}\s+`, 'i');
+        
+        if (regex.test(part)) {
+          foundPronoun = pronoun.toLowerCase();
+          // Удаляем местоимение и берём только форму глагола
+          foundVerbForm = part.replace(regex, '').trim();
+          break;
+        }
+      }
+      
+      // Если нашли местоимение и форму - добавляем
+      if (foundPronoun && foundVerbForm) {
+        result.push({ 
+          pronoun: foundPronoun, 
+          verbForm: foundVerbForm
+        });
+      } else if (!foundPronoun && part.trim()) {
+        // Если местоимение не найдено и это первая форма - присваиваем "je"
+        if (result.length === 0) {
+          result.push({ 
+            pronoun: 'je', 
+            verbForm: part.trim()
           });
         }
       }
-      
-      // Сортируем по позиции
-      foundPronounPositions.sort((a, b) => a.position - b.position);
-      
-      // Извлекаем формы между местоимениями
-      for (let i = 0; i < foundPronounPositions.length; i++) {
-        const currentPos = foundPronounPositions[i];
-        const nextPos = foundPronounPositions[i + 1];
-        
-        // Извлекаем текст от конца местоимения до начала следующего
-        let startIdx = currentPos.endPosition;
-        let endIdx = nextPos ? nextPos.position : text.length;
-        let verbForm = text.substring(startIdx, endIdx).trim();
-        
-        // Берём до следующего пробела если много текста (может быть несколько слов)
-        if (verbForm) {
-          // Отбрасываем часть если она содержит другое местоимение в начале
-          const hasNextPronoun = pronouns.some(p => 
-            verbForm.toLowerCase().startsWith(p)
-          );
-          
-          if (!hasNextPronoun) {
-            result.push({ 
-              pronoun: currentPos.pronoun, 
-              verbForm: verbForm.split(/[\s,]+/)[0] || verbForm
-            });
-          }
-        }
-      }
-    } else {
-      // Если разбилось по запятым
-      parts.forEach((part) => {
-        let found = false;
-        
-        for (const pronoun of pronouns) {
-          // Ищем местоимение в начале
-          const pattern = new RegExp(`^\s*${pronoun}\b\s*(.+)$`, 'i');
-          const match = part.match(pattern);
-          
-          if (match) {
-            const verbForm = match[1].trim();
-            if (verbForm) {
-              result.push({ pronoun: pronoun.toLowerCase(), verbForm });
-              found = true;
-              break;
-            }
-          }
-        }
-        
-        // Если не найдено местоимение в начале - это форма без явного местоимения
-        if (!found && part.trim() && result.length === 0) {
-          result.push({ pronoun: 'je', verbForm: part.trim() });
-        }
-      });
-    }
+    });
     
     return result;
   };
@@ -984,84 +946,46 @@ const ConjugationTable = ({ conjugation, word }) => {
     
     const pronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'];
     
-    // Сначала пытаемся разбить по запятым (если есть)
-    let parts = text.includes(',') 
-      ? text.split(',').map(p => p.trim()).filter(p => p)
-      : [text];
+    // Разбиваем по запятым
+    let parts = text.split(',').map(p => p.trim()).filter(p => p);
     
-    // Если не разбилось по запятым или только одна часть, 
-    // пытаемся найти местоимения в начале слов
-    if (parts.length === 1) {
-      // Ищем все вхождения местоимений в тексте
-      const foundPronounPositions = [];
+    // Парсим каждую часть
+    parts.forEach((part) => {
+      if (!part) return;
       
+      // Пытаемся найти местоимение в начале этой части
+      let foundPronoun = null;
+      let foundVerbForm = null;
+      
+      // Проверяем каждое местоимение
       for (const pronoun of pronouns) {
-        // Ищем местоимение как отдельное слово
-        const regex = new RegExp(`(\b${pronoun}\b)\s+`, 'gi');
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          foundPronounPositions.push({
-            pronoun: pronoun.toLowerCase(),
-            position: match.index,
-            endPosition: regex.lastIndex
+        // Ищем местоимение в начале строки (case-insensitive)
+        const regex = new RegExp(`^\s*${pronoun}\s+`, 'i');
+        
+        if (regex.test(part)) {
+          foundPronoun = pronoun.toLowerCase();
+          // Удаляем местоимение и берём только форму глагола
+          foundVerbForm = part.replace(regex, '').trim();
+          break;
+        }
+      }
+      
+      // Если нашли местоимение и форму - добавляем
+      if (foundPronoun && foundVerbForm) {
+        result.push({ 
+          pronoun: foundPronoun, 
+          verbForm: foundVerbForm
+        });
+      } else if (!foundPronoun && part.trim()) {
+        // Если местоимение не найдено и это первая форма - присваиваем "je"
+        if (result.length === 0) {
+          result.push({ 
+            pronoun: 'je', 
+            verbForm: part.trim()
           });
         }
       }
-      
-      // Сортируем по позиции
-      foundPronounPositions.sort((a, b) => a.position - b.position);
-      
-      // Извлекаем формы между местоимениями
-      for (let i = 0; i < foundPronounPositions.length; i++) {
-        const currentPos = foundPronounPositions[i];
-        const nextPos = foundPronounPositions[i + 1];
-        
-        // Извлекаем текст от конца местоимения до начала следующего
-        let startIdx = currentPos.endPosition;
-        let endIdx = nextPos ? nextPos.position : text.length;
-        let verbForm = text.substring(startIdx, endIdx).trim();
-        
-        // Берём до следующего пробела если много текста (может быть несколько слов)
-        if (verbForm) {
-          // Отбрасываем часть если она содержит другое местоимение в начале
-          const hasNextPronoun = pronouns.some(p => 
-            verbForm.toLowerCase().startsWith(p)
-          );
-          
-          if (!hasNextPronoun) {
-            result.push({ 
-              pronoun: currentPos.pronoun, 
-              verbForm: verbForm.split(/[\s,]+/)[0] || verbForm
-            });
-          }
-        }
-      }
-    } else {
-      // Если разбилось по запятым
-      parts.forEach((part) => {
-        let found = false;
-        
-        for (const pronoun of pronouns) {
-          // Ищем местоимение в начале
-          const pattern = new RegExp(`^\s*${pronoun}\b\s*(.+)$`, 'i');
-          const match = part.match(pattern);
-          
-          if (match) {
-            const verbForm = match[1].trim();
-            if (verbForm) {
-              result.push({ pronoun: pronoun.toLowerCase(), verbForm });
-              found = true;
-              break;
-            }
-          }
-        }
-        
-        // Если не найдено местоимение в начале - это форма без явного местоимения
-        if (!found && part.trim() && result.length === 0) {
-          result.push({ pronoun: 'je', verbForm: part.trim() });
-        }
-      });
-    }
+    });
     
     return result;
   };
