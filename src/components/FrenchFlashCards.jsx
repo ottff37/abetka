@@ -493,11 +493,49 @@ if (typeof document !== 'undefined') {
       padding: 16px 20px !important;
     }
     
+    /* Global input styles */
+    input {
+      outline: none !important;
+      outline-width: 0 !important;
+      box-shadow: none !important;
+      -webkit-focus-ring-color: transparent !important;
+    }
+    
     /* Remove focus effects */
     input:focus,
     input:active {
       outline: none !important;
+      outline-width: 0 !important;
+      outline-style: none !important;
+      outline-offset: 0 !important;
       box-shadow: none !important;
+      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
+      -webkit-focus-ring-color: transparent !important;
+    }
+    
+    input:focus-visible {
+      outline: none !important;
+      outline-width: 0 !important;
+      outline-style: none !important;
+      outline-offset: 0 !important;
+      box-shadow: none !important;
+      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
+      -webkit-focus-ring-color: transparent !important;
+    }
+    
+    input:-webkit-autofill:focus {
+      outline: none !important;
+      outline-width: 0 !important;
+      box-shadow: none !important;
+      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
+      -webkit-focus-ring-color: transparent !important;
+    }
+    
+    input:-moz-focusring {
+      outline: none !important;
+      outline-width: 0 !important;
+      box-shadow: none !important;
+      border: 1.5px solid rgba(0, 0, 0, 0.3) !important;
     }
     
     /* Slider container - reset margins and padding */
@@ -853,6 +891,8 @@ export default function FrenchFlashCardsApp() {
   const [dragOverTopicId, setDragOverTopicId] = useState(null);
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [dragOverCardIndex, setDragOverCardIndex] = useState(null);
+  const [topicTouchStart, setTopicTouchStart] = useState(null);
+  const [topicTouchOffset, setTopicTouchOffset] = useState(0);
   const [editablePartOfSpeech, setEditablePartOfSpeech] = useState('');
   const [editableTypeOfWord, setEditableTypeOfWord] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -1616,6 +1656,67 @@ export default function FrenchFlashCardsApp() {
     setDragOverTopicId(null);
   };
 
+  // Touch handlers для перетаскивания тем на мобильных устройствах
+  const handleTopicTouchStart = (e, topicId) => {
+    setDraggedTopicId(topicId);
+    setTopicTouchStart(e.touches[0].clientY);
+    setTopicTouchOffset(0);
+  };
+
+  const handleTopicTouchMove = (e, topicId) => {
+    if (!draggedTopicId || topicTouchStart === null) return;
+    
+    const currentY = e.touches[0].clientY;
+    const offset = currentY - topicTouchStart;
+    setTopicTouchOffset(offset);
+    
+    // Определяем какой элемент находится под курсором
+    try {
+      const allTopicElements = Array.from(document.querySelectorAll('[data-topic-id]'));
+      
+      // Находим элемент, который находится ближе всего к текущей позиции Y
+      for (let element of allTopicElements) {
+        const rect = element.getBoundingClientRect();
+        const elementId = element.getAttribute('data-topic-id');
+        
+        // Проверяем находится ли палец над этим элементом
+        if (currentY >= rect.top && currentY <= rect.bottom) {
+          if (elementId && elementId !== draggedTopicId) {
+            setDragOverTopicId(elementId);
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleTopicTouchMove:', error);
+    }
+  };
+
+  const handleTopicTouchEnd = (e, targetTopicId) => {
+    if (!draggedTopicId) return;
+    
+    // Находим реальный целевой элемент по dragOverTopicId
+    const finalTargetId = dragOverTopicId || targetTopicId;
+    
+    if (draggedTopicId && draggedTopicId !== finalTargetId) {
+      const draggedIndex = topics.findIndex(t => t.id === draggedTopicId);
+      const targetIndex = topics.findIndex(t => t.id === finalTargetId);
+      
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        const newTopics = [...topics];
+        const [draggedTopic] = newTopics.splice(draggedIndex, 1);
+        newTopics.splice(targetIndex, 0, draggedTopic);
+        
+        updateTopics(newTopics);
+      }
+    }
+    
+    setDraggedTopicId(null);
+    setDragOverTopicId(null);
+    setTopicTouchStart(null);
+    setTopicTouchOffset(0);
+  };
+
   // Drag and drop для карточек слов
   const handleCardDragStart = (e, cardIndex) => {
     setDraggedCardIndex(cardIndex);
@@ -2045,6 +2146,7 @@ export default function FrenchFlashCardsApp() {
                     return (
                     <div
                       key={topic.id}
+                      data-topic-id={topic.id}
                       draggable
                       onDragStart={(e) => {
                         handleTopicDragStart(e, topic.id);
@@ -2062,6 +2164,15 @@ export default function FrenchFlashCardsApp() {
                         e.stopPropagation();
                         handleTopicDrop(e, topic.id);
                       }}
+                      onTouchStart={(e) => {
+                        handleTopicTouchStart(e, topic.id);
+                      }}
+                      onTouchMove={(e) => {
+                        handleTopicTouchMove(e, topic.id);
+                      }}
+                      onTouchEnd={(e) => {
+                        handleTopicTouchEnd(e, topic.id);
+                      }}
                       onClick={() => {
                         setCurrentTopic(topic);
                         setCurrentCardIndex(0);
@@ -2075,6 +2186,7 @@ export default function FrenchFlashCardsApp() {
                         opacity: draggedTopicId === topic.id ? 0.5 : 1,
                         userSelect: 'none',
                         WebkitUserSelect: 'none',
+                        touchAction: 'none',
                       }}
                       className="p-4 flex items-center gap-4 cursor-pointer hover:bg-black/2"
                     >
@@ -2581,8 +2693,16 @@ export default function FrenchFlashCardsApp() {
                       fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                       color: '#000000',
                       backgroundColor: '#ffffff',
-                      outline: 'none',
+                      outline: '0 !important',
+                      outlineWidth: '0 !important',
+                      outlineStyle: 'none !important',
+                      outlineOffset: '0 !important',
+                      boxShadow: 'none !important',
                       boxSizing: 'border-box',
+                      WebkitFocusRingColor: 'transparent !important',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      appearance: 'none',
                     }}
                     onFocus={(e) => e.target.style.borderColor = 'rgba(0, 0, 0, 0.3)'}
                     onBlur={(e) => e.target.style.borderColor = 'rgba(0, 0, 0, 0.12)'}
