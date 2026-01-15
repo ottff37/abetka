@@ -1290,7 +1290,7 @@ export default function FrenchFlashCardsApp() {
     } catch (error) {
       console.error('Ошибка при переводе:', error);
       const errorMessage = error.message.includes('quota') || error.message.includes('rate') 
-        ? 'Лимит исчерпан. Попробуйте позже.'
+        ? 'Rate limit exceeded. Please try again later.'
         : `Error: ${error.message}`;
       addError(errorMessage);
       clearTranslation();
@@ -2736,8 +2736,12 @@ export default function FrenchFlashCardsApp() {
                     right: '16px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    fontSize: '12px',
+                    fontSize: '14px',
+                    lineHeight: '14px',
                     color: 'rgba(0, 0, 0, 0.4)',
+                    backgroundColor: '#F5F5F5',
+                    padding: '6px',
+                    borderRadius: '6px',
                   }}>
                     {loginUserId.length}/50
                   </div>
