@@ -935,8 +935,8 @@ export default function FrenchFlashCardsApp() {
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [draggedTopicId, setDraggedTopicId] = useState(null);
   const [dragOverTopicId, setDragOverTopicId] = useState(null);
-  const [draggedCardIndex, setDraggedCardIndex] = useState(null);
-  const [dragOverCardIndex, setDragOverCardIndex] = useState(null);
+  const [draggedCardFrom, setDraggedCardFrom] = useState(null);
+  const [draggedCardTo, setDraggedCardTo] = useState(null);
   const [touchDragTopicId, setTouchDragTopicId] = useState(null);
   const [touchDragOverTopicId, setTouchDragOverTopicId] = useState(null);
   const [pointerDownTopic, setPointerDownTopic] = useState(null);
@@ -1802,91 +1802,48 @@ export default function FrenchFlashCardsApp() {
   // ========== CARD DRAG AND DROP HANDLERS ==========
   
   const onCardDragStart = (e, cardIndex) => {
-    setDraggedCardIndex(cardIndex);
+    setDraggedCardFrom(cardIndex);
+    setDraggedCardTo(cardIndex);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(cardIndex));
-    console.log('Drag start card:', cardIndex);
   };
 
   const onCardDragOver = (e, cardIndex) => {
     e.preventDefault();
-    if (cardIndex !== draggedCardIndex) {
-      setDragOverCardIndex(cardIndex);
+    const index = cardIndex;
+    if (index !== draggedCardTo) {
+      setDraggedCardTo(index);
     }
   };
 
-  const onCardDragLeave = () => {
-    setDragOverCardIndex(null);
-  };
-
-  const onCardDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (draggedCardIndex === null || draggedCardIndex === dragOverCardIndex) {
-      setDraggedCardIndex(null);
-      setDragOverCardIndex(null);
+  const onCardDrop = () => {
+    if (
+      draggedCardFrom === null ||
+      draggedCardTo === null ||
+      draggedCardFrom === draggedCardTo
+    ) {
+      resetCardDrag();
       return;
     }
-
     const updatedCards = [...cards];
-    const draggedCard = updatedCards.splice(draggedCardIndex, 1)[0];
-    updatedCards.splice(dragOverCardIndex, 0, draggedCard);
+    const draggedCard = updatedCards.splice(draggedCardFrom, 1)[0];
+    updatedCards.splice(draggedCardTo, 0, draggedCard);
 
     const updatedTopic = {
       ...currentTopic,
       cards: updatedCards
     };
     updateCurrentTopic([updatedTopic]);
-
-    setDraggedCardIndex(null);
-    setDragOverCardIndex(null);
+    resetCardDrag();
   };
 
   const onCardDragEnd = () => {
-    setDraggedCardIndex(null);
-    setDragOverCardIndex(null);
+    resetCardDrag();
   };
 
-  // Drag and drop для карточек слов
-  const handleCardDragStart = (e, cardIndex) => {
-    setDraggedCardIndex(cardIndex);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
-  };
-
-  const handleCardDragOver = (e, cardIndex) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverCardIndex(cardIndex);
-  };
-
-  const handleCardDragLeave = () => {
-    setDragOverCardIndex(null);
-  };
-
-  const handleCardDrop = (e, targetCardIndex) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (draggedCardIndex !== null && draggedCardIndex !== targetCardIndex) {
-      const newCards = [...cards];
-      const [draggedCard] = newCards.splice(draggedCardIndex, 1);
-      newCards.splice(targetCardIndex, 0, draggedCard);
-      
-      setCards(newCards);
-      
-      // Update cards in current topic
-      if (currentTopic) {
-        const updatedTopics = topics.map(t => 
-          t.id === currentTopic.id ? { ...t, cards: newCards } : t
-        );
-        updateTopics(updatedTopics);
-      }
-    }
-    
-    setDraggedCardIndex(null);
-    setDragOverCardIndex(null);
+  const resetCardDrag = () => {
+    setDraggedCardFrom(null);
+    setDraggedCardTo(null);
   };
 
   // Обработка свайпа и drag на мобильных устройствах
@@ -3901,17 +3858,16 @@ export default function FrenchFlashCardsApp() {
                 {cards.map((card, idx) => (
                   <div
                     key={idx}
-                    data-card-index={idx}
+                    data-position={idx}
                     draggable
                     onDragStart={(e) => onCardDragStart(e, idx)}
                     onDragOver={(e) => onCardDragOver(e, idx)}
-                    onDragLeave={onCardDragLeave}
                     onDrop={onCardDrop}
                     onDragEnd={onCardDragEnd}
                     className={`card-item flex items-center gap-4 transition ${
-                      draggedCardIndex === idx ? 'dragging-card' : ''
+                      draggedCardFrom === idx ? 'dragging-card' : ''
                     } ${
-                      dragOverCardIndex === idx && draggedCardIndex !== idx ? 'drop-target-card' : ''
+                      draggedCardTo === idx && draggedCardFrom !== idx ? 'drop-target-card' : ''
                     }`}
                     style={{
                       border: '1.5px solid rgba(0, 0, 0, 0.08)',
@@ -3919,7 +3875,7 @@ export default function FrenchFlashCardsApp() {
                       borderRadius: '20px',
                       overflow: 'visible',
                       padding: '0.9rem',
-                      cursor: draggedCardIndex === idx ? 'grabbing' : 'grab',
+                      cursor: draggedCardFrom === idx ? 'grabbing' : 'grab',
                       userSelect: 'none',
                     }}
                   >
