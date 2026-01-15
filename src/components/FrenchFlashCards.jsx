@@ -2249,8 +2249,10 @@ export default function FrenchFlashCardsApp() {
                         touchAction: 'manipulation',
                         pointerEvents: 'auto',
                         transition: 'all 0.15s ease',
+                        borderRadius: '20px',
+                        padding: '0.9rem',
                       }}
-                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-black/2"
+                      className="flex items-center gap-4 cursor-pointer hover:bg-black/2"
                     >
                       {/* Иконка список - зона для drag and drop */}
                       <svg 
@@ -2284,6 +2286,8 @@ export default function FrenchFlashCardsApp() {
                           fontWeight: '500',
                           lineHeight: '28px',
                           color: '#000000',
+                          padding: '0px',
+                          paddingTop: '0px',
                         }} className="truncate topic-name">{topic.name}</p>
                       </div>
 
@@ -3789,10 +3793,11 @@ export default function FrenchFlashCardsApp() {
                     style={{
                       border: '1.5px solid rgba(0, 0, 0, 0.08)',
                       boxSizing: 'border-box',
-                      borderRadius: '24px',
+                      borderRadius: '20px',
                       overflow: 'visible',
+                      padding: '0.9rem',
                     }}
-                    className="p-4 flex items-center gap-4 cursor-pointer hover:bg-black/2 transition"
+                    className="flex items-center gap-4 cursor-pointer hover:bg-black/2 transition"
                   >
                     {/* Left icon */}
                     <svg 
