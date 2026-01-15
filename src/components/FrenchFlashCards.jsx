@@ -3821,7 +3821,8 @@ export default function FrenchFlashCardsApp() {
                     className="flex-shrink-0 w-full h-full flex items-center justify-center"
                     onClick={() => canFlip && !isDragging && setFlipped(!flipped)}
                     style={{
-                      padding: '0 24px',
+                      padding: '0 16px',
+                      margin: '0 8px',
                       boxSizing: 'border-box',
                       userSelect: 'none',
                       minWidth: '100%',
