@@ -1846,6 +1846,65 @@ export default function FrenchFlashCardsApp() {
     setDraggedCardTo(null);
   };
 
+  // ========== TOUCH HANDLERS FOR MOBILE ==========
+  const onCardTouchStart = (e, cardIndex) => {
+    setDraggedCardFrom(cardIndex);
+    setDraggedCardTo(cardIndex);
+  };
+
+  const onCardTouchMove = (e, cardIndex) => {
+    if (draggedCardFrom === null || draggedCardFrom === undefined) {
+      return;
+    }
+
+    e.preventDefault();
+
+    try {
+      const touch = e.touches[0];
+      const touchY = touch.clientY;
+
+      const cardsList = document.querySelector('.cards-list-container');
+      if (!cardsList) return;
+
+      const allCards = Array.from(cardsList.querySelectorAll('[data-position]'));
+
+      for (let card of allCards) {
+        const rect = card.getBoundingClientRect();
+        if (touchY >= rect.top && touchY <= rect.bottom) {
+          const hoveredIndex = parseInt(card.getAttribute('data-position'), 10);
+          if (hoveredIndex !== draggedCardTo) {
+            setDraggedCardTo(hoveredIndex);
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Error in onCardTouchMove:', error);
+    }
+  };
+
+  const onCardTouchEnd = () => {
+    if (
+      draggedCardFrom === null ||
+      draggedCardTo === null ||
+      draggedCardFrom === draggedCardTo
+    ) {
+      resetCardDrag();
+      return;
+    }
+
+    const updatedCards = [...cards];
+    const draggedCard = updatedCards.splice(draggedCardFrom, 1)[0];
+    updatedCards.splice(draggedCardTo, 0, draggedCard);
+
+    const updatedTopic = {
+      ...currentTopic,
+      cards: updatedCards
+    };
+    updateCurrentTopic([updatedTopic]);
+    resetCardDrag();
+  };
+
   // Обработка свайпа и drag на мобильных устройствах
   const handleTouchStart = (e) => {
     setTouchStart(e.targetTouches[0].clientX);
@@ -3864,6 +3923,9 @@ export default function FrenchFlashCardsApp() {
                     onDragOver={(e) => onCardDragOver(e, idx)}
                     onDrop={onCardDrop}
                     onDragEnd={onCardDragEnd}
+                    onTouchStart={(e) => onCardTouchStart(e, idx)}
+                    onTouchMove={(e) => onCardTouchMove(e, idx)}
+                    onTouchEnd={onCardTouchEnd}
                     className={`card-item flex items-center gap-4 transition ${
                       draggedCardFrom === idx ? 'dragging-card' : ''
                     } ${
@@ -3877,6 +3939,7 @@ export default function FrenchFlashCardsApp() {
                       padding: '0.9rem',
                       cursor: draggedCardFrom === idx ? 'grabbing' : 'grab',
                       userSelect: 'none',
+                      touchAction: 'none',
                     }}
                   >
                     {/* Left icon */}
