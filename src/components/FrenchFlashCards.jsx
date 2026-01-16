@@ -2253,7 +2253,9 @@ export default function FrenchFlashCardsApp() {
       wordCardLongPressTimerRef.current = null;
     }
 
-	    // Restore scroll if we locked it (state may not update synchronously)
+	    // Restore scroll if we locked it.
+	    // iOS Safari can get "stuck" if body/html touchAction/overflow remain in a locked state,
+	    // so we hard-reset to defaults in addition to restoring previous values.
 	    if (wordCardDragScrollLockRef.current.isLocked) {
       try {
         const body = document.body;
@@ -2261,6 +2263,11 @@ export default function FrenchFlashCardsApp() {
         body.style.overflow = wordCardDragScrollLockRef.current.bodyOverflow || '';
         body.style.touchAction = wordCardDragScrollLockRef.current.bodyTouchAction || '';
         html.style.touchAction = wordCardDragScrollLockRef.current.htmlTouchAction || '';
+
+        // Hard reset (fixes cases where pointerup is delivered late / gesture state leaks)
+        body.style.overflow = '';
+        body.style.touchAction = '';
+        html.style.touchAction = '';
       } catch (_) {}
 	      wordCardDragScrollLockRef.current.isLocked = false;
     }
