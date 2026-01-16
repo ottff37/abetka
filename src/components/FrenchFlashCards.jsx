@@ -2040,6 +2040,8 @@ export default function FrenchFlashCardsApp() {
   const wordCardPointerIdRef = useRef(null);
   const wordCardPointerTargetRef = useRef(null);
   const wordCardScrollBlockerRef = useRef(null);
+  // Use the same options object for add/remove on iOS Safari reliability
+  const WORD_CARD_TOUCHMOVE_OPTIONS = useRef({ passive: false });
 
   const enableWordCardScrollBlock = () => {
     if (wordCardScrollBlockerRef.current) return;
@@ -2048,12 +2050,13 @@ export default function FrenchFlashCardsApp() {
       ev.preventDefault();
     };
     wordCardScrollBlockerRef.current = blocker;
-    window.addEventListener('touchmove', blocker, { passive: false });
+    window.addEventListener('touchmove', blocker, WORD_CARD_TOUCHMOVE_OPTIONS.current);
   };
 
   const disableWordCardScrollBlock = () => {
     if (!wordCardScrollBlockerRef.current) return;
-    window.removeEventListener('touchmove', wordCardScrollBlockerRef.current, false);
+    // Must match the same capture flag/options as addEventListener
+    window.removeEventListener('touchmove', wordCardScrollBlockerRef.current, WORD_CARD_TOUCHMOVE_OPTIONS.current);
     wordCardScrollBlockerRef.current = null;
   };
 
@@ -2203,15 +2206,16 @@ export default function FrenchFlashCardsApp() {
     const endTouch = e.changedTouches[0].clientX;
     const distance = endTouch - dragStart;
 
-    if (Math.abs(distance) > 50 && cards.length > 0 && wasDragged) {
+    const topicCardsCount = currentTopic?.cards?.length || 0;
+    if (Math.abs(distance) > 50 && topicCardsCount > 0 && wasDragged) {
       setCanFlip(false);
       e.preventDefault();
       if (distance > 0) {
         // Свайп вправо → предыдущая карточка
-        setCurrentCardIndex((prev) => (prev - 1 + currentTopic.cards.length) % currentTopic.cards.length);
+        setCurrentCardIndex((prev) => (prev - 1 + topicCardsCount) % topicCardsCount);
       } else {
         // Свайп влево → следующая карточка
-        setCurrentCardIndex((prev) => (prev + 1) % currentTopic.cards.length);
+        setCurrentCardIndex((prev) => (prev + 1) % topicCardsCount);
       }
       setFlipped(false);
     }
@@ -2256,10 +2260,10 @@ export default function FrenchFlashCardsApp() {
       setCanFlip(false);
       if (distance > 0) {
         // Свайп вправо → предыдущая карточка
-        setCurrentCardIndex((prev) => (prev - 1 + currentTopic.cards.length) % currentTopic.cards.length);
+        setCurrentCardIndex((prev) => (prev - 1 + topicCardsCount) % topicCardsCount);
       } else {
         // Свайп влево → следующая карточка
-        setCurrentCardIndex((prev) => (prev + 1) % currentTopic.cards.length);
+        setCurrentCardIndex((prev) => (prev + 1) % topicCardsCount);
       }
       setFlipped(false);
     }
