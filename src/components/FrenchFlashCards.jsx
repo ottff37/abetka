@@ -1107,6 +1107,7 @@ export default function FrenchFlashCardsApp() {
   const [touchDragOverTopicId, setTouchDragOverTopicId] = useState(null);
   const [pointerDownTopic, setPointerDownTopic] = useState(null);
   const [pointerDownTime, setPointerDownTime] = useState(null);
+  const [suppressTopicClick, setSuppressTopicClick] = useState(false);
   const [editablePartOfSpeech, setEditablePartOfSpeech] = useState('');
   const [editableTypeOfWord, setEditableTypeOfWord] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -1906,6 +1907,12 @@ export default function FrenchFlashCardsApp() {
   const handleTopicPointerDown = (e, topicId) => {
     // Только для сенсорного ввода (touch)
     if (e.pointerType === 'touch') {
+      // Keep receiving pointer move/up even when the finger leaves the element
+      try {
+        e.currentTarget?.setPointerCapture?.(e.pointerId);
+      } catch (_) {
+        // ignore
+      }
       setPointerDownTopic(topicId);
       setPointerDownTime(Date.now());
       setTouchDragTopicId(topicId);
@@ -1919,6 +1926,8 @@ export default function FrenchFlashCardsApp() {
     }
     
     e.preventDefault();
+    // Prevent accidental "open topic" clicks right after reordering
+    if (!suppressTopicClick) setSuppressTopicClick(true);
     
     try {
       const currentY = e.clientY;
@@ -1933,7 +1942,8 @@ export default function FrenchFlashCardsApp() {
         const rect = element.getBoundingClientRect();
         if (currentY >= rect.top && currentY <= rect.bottom) {
           foundElement = true;
-          const hoveredId = element.getAttribute('data-topic-id');
+          const hoveredIdRaw = element.getAttribute('data-topic-id');
+          const hoveredId = hoveredIdRaw ? Number(hoveredIdRaw) : null;
           
           if (hoveredId && hoveredId !== touchDragTopicId) {
             const draggedIndex = topics.findIndex(t => t.id === touchDragTopicId);
@@ -1969,6 +1979,8 @@ export default function FrenchFlashCardsApp() {
       setPointerDownTime(null);
       setTouchDragTopicId(null);
       setTouchDragOverTopicId(null);
+      // Click event may fire after pointerup on mobile
+      setTimeout(() => setSuppressTopicClick(false), 200);
     }
   };
 
@@ -1992,21 +2004,23 @@ export default function FrenchFlashCardsApp() {
   const handleCardDrop = (e, targetCardIndex) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
+    if (!currentTopic) {
+      setDraggedCardIndex(null);
+      setDragOverCardIndex(null);
+      return;
+    }
+
     if (draggedCardIndex !== null && draggedCardIndex !== targetCardIndex) {
-      const newCards = [...cards];
+      const newCards = [...(currentTopic.cards || [])];
       const [draggedCard] = newCards.splice(draggedCardIndex, 1);
       newCards.splice(targetCardIndex, 0, draggedCard);
-      
-      setCards(newCards);
-      
-      // Update cards in current topic
-      if (currentTopic) {
-        const updatedTopics = topics.map(t => 
-          t.id === currentTopic.id ? { ...t, cards: newCards } : t
-        );
-        updateTopics(updatedTopics);
-      }
+
+      const updatedTopics = topics.map(t =>
+        t.id === currentTopic.id ? { ...t, cards: newCards } : t
+      );
+      updateTopics(updatedTopics);
+      setCurrentTopic(prev => (prev ? { ...prev, cards: newCards } : prev));
     }
     
     setDraggedCardIndex(null);
@@ -2401,7 +2415,6 @@ export default function FrenchFlashCardsApp() {
                     <div
                       key={topic.id}
                       data-topic-id={topic.id}
-                      className="topic-item"
                       draggable
                       onDragStart={(e) => {
                         handleTopicDragStart(e, topic.id);
@@ -2419,10 +2432,12 @@ export default function FrenchFlashCardsApp() {
                       }}
                       onPointerUp={handleTopicPointerUp}
                       onClick={() => {
+                        if (suppressTopicClick) return;
                         setCurrentTopic(topic);
                         setCurrentCardIndex(0);
                         setFlipped(false);
                       }}
+                      onPointerCancel={handleTopicPointerUp}
                       style={{
                         border: (touchDragTopicId === topic.id || draggedTopicId === topic.id) 
                           ? '2px dashed rgba(0, 0, 0, 0.3)' 
@@ -2433,13 +2448,14 @@ export default function FrenchFlashCardsApp() {
                         opacity: (draggedTopicId === topic.id || touchDragTopicId === topic.id) ? 0.5 : 1,
                         userSelect: 'none',
                         WebkitUserSelect: 'none',
-                        touchAction: 'manipulation',
+                        // Allow us to prevent scrolling while reordering on touch devices
+                        touchAction: touchDragTopicId ? 'none' : 'manipulation',
                         pointerEvents: 'auto',
                         transition: 'all 0.15s ease',
                         borderRadius: '20px',
                         padding: '0.9rem',
                       }}
-                      className="flex items-center gap-4 cursor-pointer hover:bg-black/2"
+                      className="topic-item flex items-center gap-4 cursor-pointer hover:bg-black/2"
                     >
                       {/* Иконка список - зона для drag and drop */}
                       <svg 
