@@ -1806,10 +1806,14 @@ export default function FrenchFlashCardsApp() {
     if (totalWords % 100 === 0) {
       setShowCelebrationModal(true);
     }
-    
-    // Focus on input for next word
-    if (inputRef.current) {
+
+    // Do not autofocus search input on mobile after adding a word
+    const isTouch = (typeof window !== 'undefined') && (('ontouchstart' in window) || (navigator?.maxTouchPoints > 0));
+    if (!isTouch && inputRef.current) {
       inputRef.current.focus();
+    } else {
+      // Ensure keyboard doesn't pop on mobile
+      hideKeyboard();
     }
   };
 
