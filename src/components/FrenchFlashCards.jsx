@@ -1123,6 +1123,12 @@ export default function FrenchFlashCardsApp() {
   const [pointerDownTopic, setPointerDownTopic] = useState(null);
   const [pointerDownTime, setPointerDownTime] = useState(null);
   const [suppressTopicClick, setSuppressTopicClick] = useState(false);
+
+  // Mobile long-press drag for WORD CARDS list
+  const [pointerDownWordCardIndex, setPointerDownWordCardIndex] = useState(null);
+  const [pointerDownWordCardTime, setPointerDownWordCardTime] = useState(null);
+  const [touchDragWordCardIndex, setTouchDragWordCardIndex] = useState(null);
+  const [touchDragOverWordCardIndex, setTouchDragOverWordCardIndex] = useState(null);
   const [editablePartOfSpeech, setEditablePartOfSpeech] = useState('');
   const [editableTypeOfWord, setEditableTypeOfWord] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -1183,6 +1189,19 @@ export default function FrenchFlashCardsApp() {
   const TOPIC_LONG_PRESS_MS = 260;
   const TOPIC_CANCEL_MOVE_PX = 10;
   const TOPIC_START_DRAG_MOVE_PX = 2;
+
+  // Mobile long-press drag support for WORD CARDS list (keeps normal scrolling)
+  const wordCardDragScrollLockRef = useRef({
+    bodyOverflow: '',
+    bodyTouchAction: '',
+	    htmlTouchAction: '',
+	    isLocked: false
+  });
+  const wordCardPointerStartRef = useRef({ x: 0, y: 0 });
+  const wordCardLongPressTimerRef = useRef(null);
+  const WORDCARD_LONG_PRESS_MS = 260;
+  const WORDCARD_CANCEL_MOVE_PX = 10;
+  const WORDCARD_START_DRAG_MOVE_PX = 2;
 
 
   // Загрузка данных из storage при загрузке
@@ -2123,6 +2142,166 @@ export default function FrenchFlashCardsApp() {
     setDraggedCardIndex(null);
     setDragOverCardIndex(null);
   };
+
+  // ===== Mobile long-press drag for WORD CARDS list (reorder) =====
+  const reorderWordCards = (fromIndex, toIndex) => {
+    if (!currentTopic || !Array.isArray(currentTopic.cards)) return;
+    if (fromIndex === null || toIndex === null) return;
+    if (fromIndex === toIndex) return;
+
+    const newCards = [...currentTopic.cards];
+    const [moved] = newCards.splice(fromIndex, 1);
+    newCards.splice(toIndex, 0, moved);
+
+    const updatedTopics = topics.map(t =>
+      t.id === currentTopic.id ? { ...t, cards: newCards } : t
+    );
+    updateTopics(updatedTopics);
+    setCurrentTopic(prev => (prev ? { ...prev, cards: newCards } : prev));
+  };
+
+  const handleWordCardPointerDown = (e, cardIndex) => {
+    if (e.pointerType !== 'touch') return;
+
+    // Ignore if user started on a button (e.g., delete)
+    const isButton = e.target && (e.target.closest?.('button') || e.target.closest?.('a') || e.target.closest?.('input'));
+    if (isButton) return;
+
+    setPointerDownWordCardIndex(cardIndex);
+    setPointerDownWordCardTime(Date.now());
+    wordCardPointerStartRef.current = { x: e.clientX, y: e.clientY };
+
+    // Setup long-press
+    if (wordCardLongPressTimerRef.current) {
+      clearTimeout(wordCardLongPressTimerRef.current);
+    }
+    wordCardLongPressTimerRef.current = setTimeout(() => {
+      // If finger still down on same card, start drag
+      setTouchDragWordCardIndex(cardIndex);
+
+      // Keep receiving pointer events
+      try {
+        e.currentTarget?.setPointerCapture?.(e.pointerId);
+      } catch (_) {}
+
+      // Lock page scroll during active drag
+      try {
+        const body = document.body;
+        const html = document.documentElement;
+        wordCardDragScrollLockRef.current.bodyOverflow = body.style.overflow;
+        wordCardDragScrollLockRef.current.bodyTouchAction = body.style.touchAction;
+        wordCardDragScrollLockRef.current.htmlTouchAction = html.style.touchAction;
+	        wordCardDragScrollLockRef.current.isLocked = true;
+        body.style.overflow = 'hidden';
+        body.style.touchAction = 'none';
+        html.style.touchAction = 'none';
+      } catch (_) {}
+    }, WORDCARD_LONG_PRESS_MS);
+  };
+
+  const handleWordCardPointerMove = (e) => {
+    if (e.pointerType !== 'touch') return;
+
+    // Before drag: if user moved too much, cancel long-press (let scroll happen)
+    if (touchDragWordCardIndex === null) {
+      if (pointerDownWordCardIndex === null) return;
+
+      const dx = Math.abs(e.clientX - wordCardPointerStartRef.current.x);
+      const dy = Math.abs(e.clientY - wordCardPointerStartRef.current.y);
+      if (Math.max(dx, dy) > WORDCARD_CANCEL_MOVE_PX) {
+        if (wordCardLongPressTimerRef.current) {
+          clearTimeout(wordCardLongPressTimerRef.current);
+          wordCardLongPressTimerRef.current = null;
+        }
+        setPointerDownWordCardIndex(null);
+        setPointerDownWordCardTime(null);
+      }
+      return;
+    }
+
+    // Active drag: reorder
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const currentY = e.clientY;
+      const list = document.querySelector('.word-cards-list-container');
+      if (!list) return;
+      const items = Array.from(list.querySelectorAll('.word-card-item'));
+
+      for (let el of items) {
+        const rect = el.getBoundingClientRect();
+        if (currentY >= rect.top && currentY <= rect.bottom) {
+          const hoveredRaw = el.getAttribute('data-card-index');
+          const hoveredIndex = hoveredRaw !== null ? Number(hoveredRaw) : null;
+          if (hoveredIndex !== null && hoveredIndex !== touchDragWordCardIndex) {
+            reorderWordCards(touchDragWordCardIndex, hoveredIndex);
+            setTouchDragWordCardIndex(hoveredIndex);
+          }
+          setTouchDragOverWordCardIndex(hoveredIndex);
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('Error in handleWordCardPointerMove:', err);
+    }
+  };
+
+	  const endWordCardDrag = () => {
+    if (wordCardLongPressTimerRef.current) {
+      clearTimeout(wordCardLongPressTimerRef.current);
+      wordCardLongPressTimerRef.current = null;
+    }
+
+	    // Restore scroll if we locked it (state may not update synchronously)
+	    if (wordCardDragScrollLockRef.current.isLocked) {
+      try {
+        const body = document.body;
+        const html = document.documentElement;
+        body.style.overflow = wordCardDragScrollLockRef.current.bodyOverflow || '';
+        body.style.touchAction = wordCardDragScrollLockRef.current.bodyTouchAction || '';
+        html.style.touchAction = wordCardDragScrollLockRef.current.htmlTouchAction || '';
+      } catch (_) {}
+	      wordCardDragScrollLockRef.current.isLocked = false;
+    }
+
+    setTouchDragWordCardIndex(null);
+    setTouchDragOverWordCardIndex(null);
+    setPointerDownWordCardIndex(null);
+    setPointerDownWordCardTime(null);
+  };
+
+  const handleWordCardPointerUp = (e) => {
+    if (e.pointerType !== 'touch') return;
+    endWordCardDrag();
+  };
+
+  const handleWordCardPointerCancel = (e) => {
+    if (e.pointerType !== 'touch') return;
+    endWordCardDrag();
+  };
+
+	  // Safety net: sometimes mobile browsers don't deliver pointerup to the item (gesture/scroll interruption).
+	  // Ensure we always restore scrolling after a drag/long-press.
+	  useEffect(() => {
+	    const forceEnd = () => {
+	      if (!wordCardDragScrollLockRef.current.isLocked) return;
+	      endWordCardDrag();
+	    };
+
+	    window.addEventListener('pointerup', forceEnd, true);
+	    window.addEventListener('pointercancel', forceEnd, true);
+	    window.addEventListener('blur', forceEnd);
+	    document.addEventListener('visibilitychange', () => {
+	      if (document.hidden) forceEnd();
+	    });
+
+	    return () => {
+	      window.removeEventListener('pointerup', forceEnd, true);
+	      window.removeEventListener('pointercancel', forceEnd, true);
+	      window.removeEventListener('blur', forceEnd);
+	    };
+	  }, []);
 
   // Обработка свайпа и drag на мобильных устройствах
   const handleTouchStart = (e) => {
@@ -4148,18 +4327,37 @@ export default function FrenchFlashCardsApp() {
               }} className="text-black unified-section-header">
                 {cards.length} {cards.length === 1 ? 'word' : 'words'}
               </h2>
-              <div className="flex flex-col" style={{ gap: '12px' }}>
+              <div className="flex flex-col word-cards-list-container" style={{ gap: '12px' }}>
                 {cards.map((card, idx) => (
                   <div
                     key={idx}
+                    data-card-index={idx}
+                    draggable={true}
+                    onDragStart={(e) => handleCardDragStart(e, idx)}
+                    onDragOver={(e) => handleCardDragOver(e, idx)}
+                    onDragLeave={handleCardDragLeave}
+                    onDrop={(e) => handleCardDrop(e, idx)}
+                    onDragEnd={() => {
+                      setDraggedCardIndex(null);
+                      setDragOverCardIndex(null);
+                    }}
+                    onPointerDown={(e) => handleWordCardPointerDown(e, idx)}
+                    onPointerMove={handleWordCardPointerMove}
+                    onPointerUp={handleWordCardPointerUp}
+                    onPointerCancel={handleWordCardPointerCancel}
                     style={{
                       border: '1.5px solid rgba(0, 0, 0, 0.08)',
                       boxSizing: 'border-box',
                       borderRadius: '20px',
                       overflow: 'visible',
                       padding: '0.9rem',
+                      opacity: (touchDragWordCardIndex === idx || draggedCardIndex === idx) ? 0.6 : 1,
+                      border: (dragOverCardIndex === idx || touchDragOverWordCardIndex === idx) 
+                        ? '1.5px solid rgba(0, 0, 0, 0.28)'
+                        : '1.5px solid rgba(0, 0, 0, 0.08)',
+                      touchAction: (touchDragWordCardIndex ? 'none' : 'pan-y'),
                     }}
-                    className="flex items-center gap-4 cursor-pointer hover:bg-black/2 transition"
+                    className={`word-card-item flex items-center gap-4 cursor-pointer hover:bg-black/2 transition ${touchDragWordCardIndex === idx ? 'dragging' : ''}`}
                   >
                     {/* Left icon */}
                     <svg 
