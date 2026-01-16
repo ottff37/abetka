@@ -1169,10 +1169,6 @@ export default function FrenchFlashCardsApp() {
   
   const inputRef = useRef(null);
   const topicTitleRef = useRef(null);
-  const wordCardHoldTimerRef = useRef(null);
-  const wordCardPointerIdRef = useRef(null);
-  const wordCardStartIndexRef = useRef(null);
-  const wordCardScrollLockActiveRef = useRef(false);
 
   // Загрузка данных из storage при загрузке
   useEffect(() => {
