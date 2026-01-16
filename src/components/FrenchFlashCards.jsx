@@ -1199,6 +1199,19 @@ export default function FrenchFlashCardsApp() {
     }
   }, []);
 
+  // Close modals on ESC
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      if (showCelebrationModal) setShowCelebrationModal(false);
+      if (showApiKeyModal) setShowApiKeyModal(false);
+      if (showLoginModal) setShowLoginModal(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showCelebrationModal, showApiKeyModal, showLoginModal]);
+
   // Глобальные обработчики для drag-drop на странице
   useEffect(() => {
     const preventDragDefault = (e) => {
@@ -2646,7 +2659,23 @@ export default function FrenchFlashCardsApp() {
             </div>
 
       {showApiKeyModal && (
-        <div className="celebration-modal-overlay" style={{
+        <div
+          className="celebration-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowApiKeyModal(false);
+              setApiKeyError('');
+              setTempApiKey(apiKey || '');
+            }
+          }}
+          onTouchStart={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowApiKeyModal(false);
+              setApiKeyError('');
+              setTempApiKey(apiKey || '');
+            }
+          }}
+          style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -2920,7 +2949,20 @@ export default function FrenchFlashCardsApp() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div style={{
+        <div
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowLoginModal(false);
+              setTempLoginUserId(loginUserId || '');
+            }
+          }}
+          onTouchStart={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowLoginModal(false);
+              setTempLoginUserId(loginUserId || '');
+            }
+          }}
+          style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -3173,7 +3215,15 @@ export default function FrenchFlashCardsApp() {
 
       {/* Celebration Modal */}
       {showCelebrationModal && (
-        <div className="celebration-modal-overlay" style={{
+        <div
+          className="celebration-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowCelebrationModal(false);
+          }}
+          onTouchStart={(e) => {
+            if (e.target === e.currentTarget) setShowCelebrationModal(false);
+          }}
+          style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -4186,7 +4236,23 @@ export default function FrenchFlashCardsApp() {
 
     {/* API Key Modal on Topic Page */}
     {showApiKeyModal && (
-        <div className="celebration-modal-overlay" style={{
+        <div
+          className="celebration-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowApiKeyModal(false);
+              setApiKeyError('');
+              setTempApiKey(apiKey || '');
+            }
+          }}
+          onTouchStart={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowApiKeyModal(false);
+              setApiKeyError('');
+              setTempApiKey(apiKey || '');
+            }
+          }}
+          style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -4454,7 +4520,21 @@ export default function FrenchFlashCardsApp() {
 
     {/* Login Modal on Topic Page */}
     {showLoginModal && (
-        <div className="celebration-modal-overlay" style={{
+        <div
+          className="celebration-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowLoginModal(false);
+              setTempLoginUserId(loginUserId || '');
+            }
+          }}
+          onTouchStart={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowLoginModal(false);
+              setTempLoginUserId(loginUserId || '');
+            }
+          }}
+          style={{
           position: 'fixed',
           top: 0,
           left: 0,
