@@ -744,7 +744,7 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
     }
 
     // Split reflexive pronoun prefix from the conjugated form (me/te/se/nous/vous/m'/t'/s')
-    const reflexiveMatch = cleanVerb.match(/^((?:m'|t'|s'|me|te|se|nous|vous)\s+)/i);
+    const reflexiveMatch = cleanVerb.match(/^((?:(?:m'|t'|s')|(?:(?:me|te|se|nous|vous)\s+)))/i);
     const reflexivePrefix = reflexiveMatch ? reflexiveMatch[1] : '';
     const verbWithoutReflexive = cleanVerb.slice(reflexivePrefix.length).trim();
 
@@ -791,78 +791,94 @@ const ConjugationTableWhite = ({ conjugation, word }) => {
   };
 
   const parseConjugation = () => {
+    // Support common Gemini variations: j', je, il, elle, ils, elles, and separators (commas/newlines/semicolons)
     const pronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'];
+
+    const aliases = {
+      'je': ["je", "j'"],
+      'tu': ["tu"],
+      'il/elle': ["il/elle", "il", "elle"],
+      'nous': ["nous"],
+      'vous': ["vous"],
+      'ils/elles': ["ils/elles", "ils", "elles"],
+    };
+
     const result = {};
-    
-    // Инициализируем пустые значения для всех местоимений
-    pronouns.forEach(p => {
-      result[p] = '';
-    });
-    
-    // Объединяем все формы в одну строку
-    let text = forms.join(' ').trim();
-    
-    // Пытаемся разбить по запятым если они есть
-    if (text.includes(',')) {
-      const parts = text.split(',').map(p => p.trim()).filter(p => p);
-      
-      parts.forEach((part) => {
-        for (const pronoun of pronouns) {
-          const regex = new RegExp(`^\\s*${pronoun}\\s+`, 'i');
-          if (regex.test(part)) {
-            const verbForm = part.replace(regex, '').trim();
-            result[pronoun.toLowerCase()] = verbForm;
-            return;
-          }
-        }
-      });
-    } else {
-      // Если нет запятых, ищем местоимения в тексте последовательно
-      let searchText = text;
-      
-      // Сначала ищем все позиции местоимений
-      const pronounPositions = [];
-      for (const pronoun of pronouns) {
-        const regex = new RegExp(`${pronoun}\\s+`, 'i');
-        const match = regex.exec(searchText);
-        
-        if (match) {
-          pronounPositions.push({
-            pronoun: pronoun.toLowerCase(),
-            index: match.index,
-            endIndex: match.index + match[0].length
-          });
-        }
+    pronouns.forEach((p) => { result[p] = ''; });
+
+    // Normalize whitespace & separators
+    let text = forms.join(' ').replace(/\s+/g, ' ').trim();
+    if (!text) {
+      return pronouns.map(p => ({ pronoun: p, verbForm: '' }));
+    }
+
+    // Build a regex that finds pronoun tokens anywhere in the string.
+    // Note: "j'" can be attached, so we handle it separately.
+    const tokenMap = [];
+    for (const p of pronouns) {
+      for (const a of (aliases[p] || [])) tokenMap.push({ canonical: p, token: a });
+    }
+    // Longest tokens first to avoid matching "il" inside "il/elle"
+    tokenMap.sort((a, b) => b.token.length - a.token.length);
+
+    const tokenPattern = tokenMap
+      .map(t => t.token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|');
+
+    const reToken = new RegExp(`(?:^|\\s)(${tokenPattern})(?=\\s|$)`, 'ig');
+
+    const matches = [];
+    for (const m of text.matchAll(reToken)) {
+      const raw = (m[1] || '').toLowerCase();
+      const start = m.index + (m[0].startsWith(' ') ? 1 : 0); // skip leading space if matched via (?:^|\s)
+      const end = start + (m[1] || '').length;
+
+      // Resolve canonical pronoun
+      let canonical = null;
+      for (const tm of tokenMap) {
+        if (tm.token.toLowerCase() === raw) { canonical = tm.canonical; break; }
       }
-      
-      // Если нет местоимений вообще, добавляем всё как "je"
-      if (pronounPositions.length === 0) {
-        result['je'] = searchText;
-      } else {
-        // Сортируем по позиции
-        pronounPositions.sort((a, b) => a.index - b.index);
-        
-        // Если первый найденный текст не начинается с местоимения, добавляем "je"
-        if (pronounPositions[0].index > 0) {
-          const jeForm = searchText.substring(0, pronounPositions[0].index).trim();
-          result['je'] = jeForm;
-        }
-        
-        // Извлекаем формы между местоимениями
-        for (let i = 0; i < pronounPositions.length; i++) {
-          const current = pronounPositions[i];
-          const next = pronounPositions[i + 1];
-          
-          const startIdx = current.endIndex;
-          const endIdx = next ? next.index : searchText.length;
-          const verbForm = searchText.substring(startIdx, endIdx).trim();
-          
-          result[current.pronoun] = verbForm;
-        }
+      if (canonical) matches.push({ canonical, start, end });
+    }
+
+    // Special case: "j'" is often attached (no spaces). Catch it if not found above.
+    if (!matches.some(m => m.canonical === 'je')) {
+      const jIdx = text.toLowerCase().indexOf("j'");
+      if (jIdx === 0) {
+        matches.unshift({ canonical: 'je', start: 0, end: 2 });
       }
     }
-    
-    // Преобразуем объект в массив в правильном порядке
+
+    if (matches.length === 0) {
+      // If no pronouns detected, put everything under 'je'
+      result['je'] = text;
+      return pronouns.map(p => ({ pronoun: p, verbForm: result[p] || '' }));
+    }
+
+    // Sort and de-duplicate by earliest occurrence
+    matches.sort((a, b) => a.start - b.start);
+    const compact = [];
+    for (const m of matches) {
+      const prev = compact[compact.length - 1];
+      if (!prev || (prev.start !== m.start || prev.canonical !== m.canonical)) {
+        compact.push(m);
+      }
+    }
+
+    for (let i = 0; i < compact.length; i++) {
+      const cur = compact[i];
+      const next = compact[i + 1];
+      const startIdx = cur.end;
+      const endIdx = next ? next.start : text.length;
+      let form = text.substring(startIdx, endIdx).trim();
+
+      // Clean common separators right after pronoun
+      form = form.replace(/^[:\-–—]/, '').trim();
+      form = form.replace(/^[,;]+/, '').trim();
+
+      result[cur.canonical] = form;
+    }
+
     return pronouns.map(p => ({
       pronoun: p,
       verbForm: result[p] || ''
@@ -951,7 +967,7 @@ const ConjugationTable = ({ conjugation, word }) => {
     }
 
     // Split reflexive pronoun prefix from the conjugated form (me/te/se/nous/vous/m'/t'/s')
-    const reflexiveMatch = cleanVerb.match(/^((?:m'|t'|s'|me|te|se|nous|vous)\s+)/i);
+    const reflexiveMatch = cleanVerb.match(/^((?:(?:m'|t'|s')|(?:(?:me|te|se|nous|vous)\s+)))/i);
     const reflexivePrefix = reflexiveMatch ? reflexiveMatch[1] : '';
     const verbWithoutReflexive = cleanVerb.slice(reflexivePrefix.length).trim();
 
@@ -998,78 +1014,94 @@ const ConjugationTable = ({ conjugation, word }) => {
   };
 
   const parseConjugation = () => {
+    // Support common Gemini variations: j', je, il, elle, ils, elles, and separators (commas/newlines/semicolons)
     const pronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'];
+
+    const aliases = {
+      'je': ["je", "j'"],
+      'tu': ["tu"],
+      'il/elle': ["il/elle", "il", "elle"],
+      'nous': ["nous"],
+      'vous': ["vous"],
+      'ils/elles': ["ils/elles", "ils", "elles"],
+    };
+
     const result = {};
-    
-    // Инициализируем пустые значения для всех местоимений
-    pronouns.forEach(p => {
-      result[p] = '';
-    });
-    
-    // Объединяем все формы в одну строку
-    let text = forms.join(' ').trim();
-    
-    // Пытаемся разбить по запятым если они есть
-    if (text.includes(',')) {
-      const parts = text.split(',').map(p => p.trim()).filter(p => p);
-      
-      parts.forEach((part) => {
-        for (const pronoun of pronouns) {
-          const regex = new RegExp(`^\\s*${pronoun}\\s+`, 'i');
-          if (regex.test(part)) {
-            const verbForm = part.replace(regex, '').trim();
-            result[pronoun.toLowerCase()] = verbForm;
-            return;
-          }
-        }
-      });
-    } else {
-      // Если нет запятых, ищем местоимения в тексте последовательно
-      let searchText = text;
-      
-      // Сначала ищем все позиции местоимений
-      const pronounPositions = [];
-      for (const pronoun of pronouns) {
-        const regex = new RegExp(`${pronoun}\\s+`, 'i');
-        const match = regex.exec(searchText);
-        
-        if (match) {
-          pronounPositions.push({
-            pronoun: pronoun.toLowerCase(),
-            index: match.index,
-            endIndex: match.index + match[0].length
-          });
-        }
+    pronouns.forEach((p) => { result[p] = ''; });
+
+    // Normalize whitespace & separators
+    let text = forms.join(' ').replace(/\s+/g, ' ').trim();
+    if (!text) {
+      return pronouns.map(p => ({ pronoun: p, verbForm: '' }));
+    }
+
+    // Build a regex that finds pronoun tokens anywhere in the string.
+    // Note: "j'" can be attached, so we handle it separately.
+    const tokenMap = [];
+    for (const p of pronouns) {
+      for (const a of (aliases[p] || [])) tokenMap.push({ canonical: p, token: a });
+    }
+    // Longest tokens first to avoid matching "il" inside "il/elle"
+    tokenMap.sort((a, b) => b.token.length - a.token.length);
+
+    const tokenPattern = tokenMap
+      .map(t => t.token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|');
+
+    const reToken = new RegExp(`(?:^|\\s)(${tokenPattern})(?=\\s|$)`, 'ig');
+
+    const matches = [];
+    for (const m of text.matchAll(reToken)) {
+      const raw = (m[1] || '').toLowerCase();
+      const start = m.index + (m[0].startsWith(' ') ? 1 : 0); // skip leading space if matched via (?:^|\s)
+      const end = start + (m[1] || '').length;
+
+      // Resolve canonical pronoun
+      let canonical = null;
+      for (const tm of tokenMap) {
+        if (tm.token.toLowerCase() === raw) { canonical = tm.canonical; break; }
       }
-      
-      // Если нет местоимений вообще, добавляем всё как "je"
-      if (pronounPositions.length === 0) {
-        result['je'] = searchText;
-      } else {
-        // Сортируем по позиции
-        pronounPositions.sort((a, b) => a.index - b.index);
-        
-        // Если первый найденный текст не начинается с местоимения, добавляем "je"
-        if (pronounPositions[0].index > 0) {
-          const jeForm = searchText.substring(0, pronounPositions[0].index).trim();
-          result['je'] = jeForm;
-        }
-        
-        // Извлекаем формы между местоимениями
-        for (let i = 0; i < pronounPositions.length; i++) {
-          const current = pronounPositions[i];
-          const next = pronounPositions[i + 1];
-          
-          const startIdx = current.endIndex;
-          const endIdx = next ? next.index : searchText.length;
-          const verbForm = searchText.substring(startIdx, endIdx).trim();
-          
-          result[current.pronoun] = verbForm;
-        }
+      if (canonical) matches.push({ canonical, start, end });
+    }
+
+    // Special case: "j'" is often attached (no spaces). Catch it if not found above.
+    if (!matches.some(m => m.canonical === 'je')) {
+      const jIdx = text.toLowerCase().indexOf("j'");
+      if (jIdx === 0) {
+        matches.unshift({ canonical: 'je', start: 0, end: 2 });
       }
     }
-    
-    // Преобразуем объект в массив в правильном порядке
+
+    if (matches.length === 0) {
+      // If no pronouns detected, put everything under 'je'
+      result['je'] = text;
+      return pronouns.map(p => ({ pronoun: p, verbForm: result[p] || '' }));
+    }
+
+    // Sort and de-duplicate by earliest occurrence
+    matches.sort((a, b) => a.start - b.start);
+    const compact = [];
+    for (const m of matches) {
+      const prev = compact[compact.length - 1];
+      if (!prev || (prev.start !== m.start || prev.canonical !== m.canonical)) {
+        compact.push(m);
+      }
+    }
+
+    for (let i = 0; i < compact.length; i++) {
+      const cur = compact[i];
+      const next = compact[i + 1];
+      const startIdx = cur.end;
+      const endIdx = next ? next.start : text.length;
+      let form = text.substring(startIdx, endIdx).trim();
+
+      // Clean common separators right after pronoun
+      form = form.replace(/^[:\-–—]/, '').trim();
+      form = form.replace(/^[,;]+/, '').trim();
+
+      result[cur.canonical] = form;
+    }
+
     return pronouns.map(p => ({
       pronoun: p,
       verbForm: result[p] || ''
