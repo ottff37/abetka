@@ -36,6 +36,15 @@ if (typeof document !== 'undefined') {
       background: #F6F2F2;
       z-index: -1;
     }
+
+    /* === Hide scrollbars (mobile & desktop) === */
+    html, body {
+      scrollbar-width: none; /* Firefox */
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none; /* Chrome, Safari */
+    }
     
     input, button, textarea, select {
       font-size: 16px !important;
@@ -1713,7 +1722,9 @@ export default function FrenchFlashCardsApp() {
       setLoadingTranslation(false);
       setSearchInput('');
       // Focus on input for next search
-      if (inputRef.current) {
+      // Do not autofocus search input on mobile
+      const isTouch = (typeof window !== 'undefined') && (('ontouchstart' in window) || (navigator?.maxTouchPoints > 0));
+      if (!isTouch && inputRef.current) {
         inputRef.current.focus();
       }
     }
