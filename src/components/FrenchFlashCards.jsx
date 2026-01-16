@@ -4168,7 +4168,9 @@ export default function FrenchFlashCardsApp() {
                       padding: '0.9rem',
                       userSelect: 'none',
                       WebkitUserSelect: 'none',
-                      touchAction: 'auto',
+                      // Allow normal vertical scroll, but once long-press drag is active
+                      // we must disable browser scroll handling (iOS Safari otherwise eats the gesture).
+                      touchAction: isTouchWordCardDragging ? 'none' : 'pan-y',
                       backgroundColor: (isTouchWordCardDragging && touchDragOverWordCardIndex === idx)
                         ? 'rgba(0, 0, 0, 0.06)'
                         : 'transparent',
