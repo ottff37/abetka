@@ -1183,6 +1183,7 @@ export default function FrenchFlashCardsApp() {
 
   // Prevent iOS Safari scroll/gesture lock during active word-card drag
   const wordCardPreventTouchMoveRef = useRef(null);
+  const wordCardPreventTouchMoveOptionsRef = useRef({ passive: false });
   const wordCardPointerCaptureRef = useRef({ el: null, pointerId: null });
 
 
@@ -1321,6 +1322,18 @@ export default function FrenchFlashCardsApp() {
       };
     }
   }, [currentTopic]);
+
+  // When navigating into a topic (or restoring it after refresh), ensure the user starts at the top.
+  useEffect(() => {
+    if (!currentTopic) return;
+    try {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      });
+    } catch (_) {
+      // no-op
+    }
+  }, [currentTopic?.id]);
 
   // ========== API CONFIG ==========
 
@@ -2207,25 +2220,19 @@ export default function FrenchFlashCardsApp() {
         wordCardPointerCaptureRef.current = { el: e.currentTarget, pointerId: e.pointerId };
       } catch (_) {}
 
-      // Lock page scroll during active drag
+      // Lock page scroll during active drag (iOS-safe):
+      // Do NOT touch body/html overflow; Safari can get stuck after toggling overflow.
+      // Instead, block scrolling only while dragging via a non-passive touchmove listener.
       try {
-        const body = document.body;
-        const html = document.documentElement;
-        wordCardDragScrollLockRef.current.bodyOverflow = body.style.overflow;
-        wordCardDragScrollLockRef.current.bodyTouchAction = body.style.touchAction;
-        wordCardDragScrollLockRef.current.htmlTouchAction = html.style.touchAction;
-	        wordCardDragScrollLockRef.current.isLocked = true;
-        // Instead of forcing overflow:hidden (which can leave iOS Safari stuck),
-        // we prevent scrolling via a non-passive touchmove listener while dragging.
-        body.style.touchAction = 'none';
-        html.style.touchAction = 'none';
+	      wordCardDragScrollLockRef.current.isLocked = true;
 
         if (!wordCardPreventTouchMoveRef.current) {
           wordCardPreventTouchMoveRef.current = (ev) => {
-            // Block page scroll while actively reordering
             ev.preventDefault();
           };
-          document.addEventListener('touchmove', wordCardPreventTouchMoveRef.current, { passive: false });
+          const opts = wordCardPreventTouchMoveOptionsRef.current;
+          document.addEventListener('touchmove', wordCardPreventTouchMoveRef.current, opts);
+          window.addEventListener('touchmove', wordCardPreventTouchMoveRef.current, opts);
         }
       } catch (_) {}
     }, WORDCARD_LONG_PRESS_MS);
@@ -2285,22 +2292,14 @@ export default function FrenchFlashCardsApp() {
       wordCardLongPressTimerRef.current = null;
     }
 
-	    // Restore scroll if we locked it.
-	    // iOS Safari can get "stuck" if body/html touchAction/overflow remain in a locked state,
-	    // so we hard-reset to defaults in addition to restoring previous values.
-	    if (wordCardDragScrollLockRef.current.isLocked) {
+	  // Restore scrolling if we locked it (iOS-safe).
+	  if (wordCardDragScrollLockRef.current.isLocked) {
       try {
-        const body = document.body;
-        const html = document.documentElement;
-
-        // Restore previous inline styles
-        body.style.overflow = wordCardDragScrollLockRef.current.bodyOverflow || '';
-        body.style.touchAction = wordCardDragScrollLockRef.current.bodyTouchAction || '';
-        html.style.touchAction = wordCardDragScrollLockRef.current.htmlTouchAction || '';
-
-        // Remove our temporary touchmove blocker
+        // Remove our temporary touchmove blocker (use same options object)
         if (wordCardPreventTouchMoveRef.current) {
-          document.removeEventListener('touchmove', wordCardPreventTouchMoveRef.current);
+          const opts = wordCardPreventTouchMoveOptionsRef.current;
+          document.removeEventListener('touchmove', wordCardPreventTouchMoveRef.current, opts);
+          window.removeEventListener('touchmove', wordCardPreventTouchMoveRef.current, opts);
           wordCardPreventTouchMoveRef.current = null;
         }
 
@@ -2312,10 +2311,6 @@ export default function FrenchFlashCardsApp() {
           } catch (_) {}
         }
         wordCardPointerCaptureRef.current = { el: null, pointerId: null };
-
-        // Extra safety for iOS: ensure defaults are back
-        body.style.touchAction = '';
-        html.style.touchAction = '';
       } catch (_) {}
       wordCardDragScrollLockRef.current.isLocked = false;
     }
@@ -2768,6 +2763,16 @@ export default function FrenchFlashCardsApp() {
                         setCurrentTopic(topic);
                         setCurrentCardIndex(0);
                         setFlipped(false);
+                        // Ensure we land at the top of the topic screen after navigation.
+                        // Using RAF + microtask makes this reliable across mobile browsers.
+                        try {
+                          requestAnimationFrame(() => {
+                            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+                            setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 0);
+                          });
+                        } catch (_) {
+                          // no-op
+                        }
                       }}
                       style={{
                         border: (touchDragTopicId === topic.id || draggedTopicId === topic.id) 
