@@ -685,6 +685,15 @@ if (typeof document !== 'undefined') {
   text-transform: capitalize;
 }
 
+/* Force capitalize for inline-styled RU paragraphs (rendered as <p style="...font-size: 32px..."> etc.) */
+p[style*="font-size: 32px"] {
+  text-transform: capitalize !important;
+}
+p[style*="font-size: 14px"][style*="rgba(0, 0, 0, 0.4)"],
+p[style*="font-size: 14px"][style*="rgba(0,0,0,0.4)"] {
+  text-transform: capitalize !important;
+}
+
 `;
   document.head.appendChild(style);
 }
