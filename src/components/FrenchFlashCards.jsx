@@ -59,7 +59,8 @@ if (typeof document !== 'undefined') {
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
-      touch-action: manipulation;
+      /* Needed for reliable pointer/touch move events on mobile during reordering */
+      touch-action: none;
     }
     
     .back-button-sidebar, .export-button-sidebar, .import-button-sidebar {
