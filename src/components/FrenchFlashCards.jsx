@@ -3413,6 +3413,130 @@ export default function FrenchFlashCardsApp() {
             </div>
           </div>
 
+          {/* Achivments */}
+          <div className="bg-white mobile-614 w-full" style={{
+            borderRadius: '24px',
+            maxWidth: '614px',
+            margin: '16px auto 0 auto',
+            paddingTop: '32px',
+            paddingBottom: '32px',
+          }}>
+            <div className="flex items-center justify-center" style={{ padding: '0 32px' }}>
+              <div style={{
+                flex: 1,
+                fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                fontSize: '18px',
+                fontWeight: '500',
+                lineHeight: '28px',
+                color: '#000000',
+              }}>
+                Achivments
+              </div>
+            </div>
+
+            <div
+              className="flex gap-3 overflow-x-auto"
+              style={{
+                paddingLeft: '32px',
+                paddingRight: '32px',
+                marginTop: '16px',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {/* Unlocked card */}
+              <div
+                className="relative flex flex-col items-center justify-center"
+                style={{
+                  width: '172px',
+                  height: '220px',
+                  padding: '16px 20px',
+                  borderRadius: '20px',
+                  gap: '6px',
+                  flexShrink: 0,
+                }}
+              >
+                {/* Background pills */}
+                <div className="absolute" style={{ left: 0, top: 0, right: 0, bottom: 0, borderRadius: '20px' }} aria-hidden="true">
+                  {/* Row 1 */}
+                  <div style={{ position: 'absolute', left: '11px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
+                  <div style={{ position: 'absolute', left: '45.88px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
+                  <div style={{ position: 'absolute', left: '80.77px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
+                  <div style={{ position: 'absolute', left: '115.65px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
+                  {/* Row 2 */}
+                  <div style={{ position: 'absolute', left: '11px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
+                  <div style={{ position: 'absolute', left: '45.88px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
+                  <div style={{ position: 'absolute', left: '80.77px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
+                  <div style={{ position: 'absolute', left: '115.65px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
+                </div>
+
+                <div style={{ width: '132px', height: '134px', position: 'relative', flexShrink: 0 }}>
+                  <img
+                    alt=""
+                    src="https://www.figma.com/api/mcp/asset/056e5a07-3ce7-4b66-b51e-3fd6e9e62ce8"
+                    style={{
+                      position: 'absolute',
+                      left: '5.81%',
+                      top: '-16.5%',
+                      width: '88.38%',
+                      height: '130.6%',
+                      maxWidth: 'none',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </div>
+
+                <div style={{
+                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  lineHeight: '24px',
+                  color: '#000000',
+                  whiteSpace: 'nowrap',
+                }}>
+                  Chill Sirius
+                </div>
+              </div>
+
+              {/* Locked cards */}
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="relative flex items-center justify-center"
+                  style={{
+                    width: '172px',
+                    height: '220px',
+                    padding: '16px 20px',
+                    borderRadius: '20px',
+                    flexShrink: 0,
+                    border: '1.5px dashed rgba(0, 0, 0, 0.12)',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div style={{ width: '132px', height: '134px', position: 'relative', filter: 'blur(12.3px)' }} aria-hidden="true">
+                    <img
+                      alt=""
+                      src="https://www.figma.com/api/mcp/asset/df4be294-fac5-40d4-a68f-b631419cc56e"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </div>
+                  <img
+                    alt=""
+                    src="https://www.figma.com/api/mcp/asset/b25ef6dd-c686-4cd6-8253-6fcc13c752bd"
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '32px',
+                      height: '32px',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Список тем */}
           {topics.length > 0 && (
             <div className="bg-white mobile-614 w-full" style={{ 
