@@ -3414,126 +3414,47 @@ export default function FrenchFlashCardsApp() {
           </div>
 
           {/* Achivments */}
-          <div className="bg-white mobile-614 w-full" style={{
-            borderRadius: '24px',
+          <div className="w-[614px] py-8 bg-white rounded-[32px] flex flex-col justify-start items-center gap-3" style={{
             maxWidth: '614px',
+            width: '100%',
             margin: '16px auto 0 auto',
-            paddingTop: '32px',
-            paddingBottom: '32px',
           }}>
-            <div className="flex items-center justify-center" style={{ padding: '0 32px' }}>
-              <div style={{
-                flex: 1,
-                fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                fontSize: '18px',
-                fontWeight: '500',
-                lineHeight: '28px',
-                color: '#000000',
-              }}>
-                Achivments
+            <div className="self-stretch flex flex-col justify-start items-start gap-4">
+              <div className="self-stretch px-8 inline-flex justify-center items-center gap-2.5">
+                <div className="flex-1 justify-center text-black text-lg font-medium font-['Geist'] leading-7">Achivments</div>
               </div>
-            </div>
-
-            <div
-              className="flex gap-3 overflow-x-auto"
-              style={{
-                paddingLeft: '32px',
-                paddingRight: '32px',
-                marginTop: '16px',
-                WebkitOverflowScrolling: 'touch',
-              }}
-            >
-              {/* Unlocked card */}
-              <div
-                className="relative flex flex-col items-center justify-center"
-                style={{
-                  width: '172px',
-                  height: '220px',
-                  padding: '16px 20px',
-                  borderRadius: '20px',
-                  gap: '6px',
-                  flexShrink: 0,
-                }}
-              >
-                {/* Background pills */}
-                <div className="absolute" style={{ left: 0, top: 0, right: 0, bottom: 0, borderRadius: '20px' }} aria-hidden="true">
-                  {/* Row 1 */}
-                  <div style={{ position: 'absolute', left: '11px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
-                  <div style={{ position: 'absolute', left: '45.88px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
-                  <div style={{ position: 'absolute', left: '80.77px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
-                  <div style={{ position: 'absolute', left: '115.65px', top: '22px', width: '45.349px', height: '72.578px', background: '#F2F2F2', borderRadius: '580px' }} />
-                  {/* Row 2 */}
-                  <div style={{ position: 'absolute', left: '11px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
-                  <div style={{ position: 'absolute', left: '45.88px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
-                  <div style={{ position: 'absolute', left: '80.77px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
-                  <div style={{ position: 'absolute', left: '115.65px', top: '46.43px', width: '45.349px', height: '118.568px', background: '#F2F2F2', borderRadius: '580px' }} />
+              <div className="self-stretch pl-8 pr-96 inline-flex justify-start items-start gap-3 overflow-hidden">
+                <div className="w-44 h-56 px-5 py-4 rounded-[20px] inline-flex flex-col justify-center items-center gap-1.5">
+                  <div className="w-11 h-20 bg-zinc-100 rounded-[580px]" />
+                  <div className="w-11 h-20 bg-zinc-100 rounded-[580px]" />
+                  <div className="w-11 h-20 bg-zinc-100 rounded-[580px]" />
+                  <div className="w-11 h-20 bg-zinc-100 rounded-[580px]" />
+                  <div className="w-11 h-28 bg-zinc-100 rounded-[580px]" />
+                  <div className="w-11 h-28 bg-zinc-100 rounded-[580px]" />
+                  <div className="w-11 h-28 bg-zinc-100 rounded-[580px]" />
+                  <div className="w-11 h-28 bg-zinc-100 rounded-[580px]" />
+                  <img className="w-32 h-32" src="https://placehold.co/132x134" alt="" />
+                  <div className="justify-center text-black text-base font-medium font-['Geist'] leading-6">Chill Sirius</div>
                 </div>
-
-                <div style={{ width: '132px', height: '134px', position: 'relative', flexShrink: 0 }}>
-                  <img
-                    alt=""
-                    src="https://www.figma.com/api/mcp/asset/056e5a07-3ce7-4b66-b51e-3fd6e9e62ce8"
-                    style={{
-                      position: 'absolute',
-                      left: '5.81%',
-                      top: '-16.5%',
-                      width: '88.38%',
-                      height: '130.6%',
-                      maxWidth: 'none',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                </div>
-
-                <div style={{
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  lineHeight: '24px',
-                  color: '#000000',
-                  whiteSpace: 'nowrap',
-                }}>
-                  Chill Sirius
-                </div>
-              </div>
-
-              {/* Locked cards */}
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="relative flex items-center justify-center"
-                  style={{
-                    width: '172px',
-                    height: '220px',
-                    padding: '16px 20px',
-                    borderRadius: '20px',
-                    flexShrink: 0,
-                    border: '1.5px dashed rgba(0, 0, 0, 0.12)',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <div style={{ width: '132px', height: '134px', position: 'relative', filter: 'blur(12.3px)' }} aria-hidden="true">
-                    <img
-                      alt=""
-                      src="https://www.figma.com/api/mcp/asset/df4be294-fac5-40d4-a68f-b631419cc56e"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
+                <div className="w-44 h-56 px-5 py-4 relative rounded-[20px] outline outline-[1.50px] outline-offset-[-1.50px] outline-black/10 flex justify-center items-center gap-2">
+                  <img className="w-32 h-32 blur-md" src="https://placehold.co/132x134" alt="" />
+                  <div className="w-8 h-8 left-[70px] top-[94px] absolute overflow-hidden">
+                    <div className="w-6 h-7 left-[5.33px] top-[1.33px] absolute bg-neutral-200" />
                   </div>
-                  <img
-                    alt=""
-                    src="https://www.figma.com/api/mcp/asset/b25ef6dd-c686-4cd6-8253-6fcc13c752bd"
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '32px',
-                      height: '32px',
-                      pointerEvents: 'none',
-                    }}
-                  />
                 </div>
-              ))}
+                <div className="w-44 h-56 px-5 py-4 relative rounded-[20px] outline outline-[1.50px] outline-offset-[-1.50px] outline-black/10 flex justify-center items-center gap-2">
+                  <img className="w-32 h-32 blur-md" src="https://placehold.co/132x134" alt="" />
+                  <div className="w-8 h-8 left-[70px] top-[94px] absolute overflow-hidden">
+                    <div className="w-6 h-7 left-[5.33px] top-[1.33px] absolute bg-neutral-200" />
+                  </div>
+                </div>
+                <div className="w-44 h-56 px-5 py-4 relative rounded-[20px] outline outline-[1.50px] outline-offset-[-1.50px] outline-black/10 flex justify-center items-center gap-2">
+                  <img className="w-32 h-32 blur-md" src="https://placehold.co/132x134" alt="" />
+                  <div className="w-8 h-8 left-[70px] top-[94px] absolute overflow-hidden">
+                    <div className="w-6 h-7 left-[5.33px] top-[1.33px] absolute bg-neutral-200" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
