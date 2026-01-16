@@ -59,7 +59,15 @@ if (typeof document !== 'undefined') {
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
-      touch-action: manipulation;
+      /* Allow normal vertical scrolling; long-press drag will temporarily switch to 'none' via inline styles */
+      touch-action: pan-y;
+    }
+    .topic-item * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      /* Critical for iOS: ensure children don't override the parent touch-action */
+      touch-action: inherit;
     }
     
     .back-button-sidebar, .export-button-sidebar, .import-button-sidebar {
@@ -1170,6 +1178,19 @@ export default function FrenchFlashCardsApp() {
   const inputRef = useRef(null);
   const topicTitleRef = useRef(null);
 
+  // ===== Mobile long-press drag (TOPICS list) =====
+  // Keep normal scrolling; start drag only after a short hold.
+  const TOPIC_HOLD_MS = 140;
+  const topicHoldTimeoutRef = useRef(null);
+  const topicPointerIdRef = useRef(null);
+  const topicPointerTargetRef = useRef(null);
+  const topicDragActivatedRef = useRef(false);
+  const topicDragMovedRef = useRef(false);
+  const topicStartYRef = useRef(null);
+  const topicStartIdRef = useRef(null);
+  const topicHoverIdRef = useRef(null);
+  const suppressNextTopicClickRef = useRef(0);
+
   // Загрузка данных из storage при загрузке
   useEffect(() => {
     loadTopics();
@@ -1932,20 +1953,60 @@ export default function FrenchFlashCardsApp() {
 
   // Drag and drop для тем на мобильных используя pointer events
   const handleTopicPointerDown = (e, topicId) => {
-    // Только для сенсорного ввода (touch)
-    if (e.pointerType === 'touch') {
-      setPointerDownTopic(topicId);
-      setPointerDownTime(Date.now());
-      setTouchDragTopicId(topicId);
-      console.log('Pointer down on topic:', topicId);
+    // Touch long-press to start dragging topics (keeps normal scrolling)
+    if (e.pointerType !== 'touch') return;
+
+    // If user pressed on delete button (or inside it) — don't start drag
+    const pressedDelete = e.target && e.target.closest && e.target.closest('button');
+    if (pressedDelete) return;
+
+    try {
+      // Capture pointer so move/up are reliable on iOS
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch (_) {}
+
+    setPointerDownTopic(topicId);
+    setPointerDownTime(Date.now());
+
+    // Start a hold timer; if user moves before it fires — we cancel and allow scroll
+    if (topicHoldTimeoutRef.current) {
+      clearTimeout(topicHoldTimeoutRef.current);
+      topicHoldTimeoutRef.current = null;
     }
+
+    topicPointerIdRef.current = e.pointerId;
+    topicPointerTargetRef.current = e.currentTarget;
+    topicDragActivatedRef.current = false;
+    topicDragMovedRef.current = false;
+    topicStartYRef.current = e.clientY;
+    topicStartIdRef.current = topicId;
+    topicHoverIdRef.current = topicId;
+
+    topicHoldTimeoutRef.current = setTimeout(() => {
+      // Activate drag
+      topicDragActivatedRef.current = true;
+      setTouchDragTopicId(topicId);
+    }, TOPIC_HOLD_MS);
   };
 
   const handleTopicPointerMove = (e, topicId) => {
-    if (!touchDragTopicId || e.pointerType !== 'touch') {
+    if (e.pointerType !== 'touch') return;
+
+    // If hold hasn't activated yet — cancel drag if user starts scrolling
+    if (!topicDragActivatedRef.current) {
+      const dy = Math.abs(e.clientY - (topicStartYRef.current ?? e.clientY));
+      if (dy > 12) {
+        // User is scrolling; cancel hold-to-drag
+        if (topicHoldTimeoutRef.current) {
+          clearTimeout(topicHoldTimeoutRef.current);
+          topicHoldTimeoutRef.current = null;
+        }
+      }
       return;
     }
-    
+
+    // Drag activated
+    topicDragMovedRef.current = true;
     e.preventDefault();
     
     try {
@@ -1964,21 +2025,10 @@ export default function FrenchFlashCardsApp() {
           const hoveredId = element.getAttribute('data-topic-id');
           const hoveredIdNum = hoveredId ? Number(hoveredId) : null;
 
-          if (hoveredIdNum != null && hoveredIdNum !== touchDragTopicId) {
-            const draggedIndex = topics.findIndex(t => t.id === touchDragTopicId);
-            const targetIndex = topics.findIndex(t => t.id === hoveredIdNum);
-            
-            if (draggedIndex !== -1 && targetIndex !== -1) {
-              const newTopics = [...topics];
-              const [draggedTopic] = newTopics.splice(draggedIndex, 1);
-              newTopics.splice(targetIndex, 0, draggedTopic);
-              
-              setTouchDragTopicId(draggedTopic.id);
-              updateTopics(newTopics);
-            }
+          if (hoveredIdNum != null) {
+            topicHoverIdRef.current = hoveredIdNum;
+            setTouchDragOverTopicId(hoveredIdNum);
           }
-          
-          setTouchDragOverTopicId(hoveredIdNum);
           break;
         }
       }
@@ -1992,17 +2042,63 @@ export default function FrenchFlashCardsApp() {
   };
 
   const handleTopicPointerUp = (e) => {
-    if (e.pointerType === 'touch') {
-      console.log('Pointer up - clearing drag state');
-      setPointerDownTopic(null);
-      setPointerDownTime(null);
-      setTouchDragTopicId(null);
-      setTouchDragOverTopicId(null);
+    if (e.pointerType !== 'touch') return;
+
+    // Always clear hold timer
+    if (topicHoldTimeoutRef.current) {
+      clearTimeout(topicHoldTimeoutRef.current);
+      topicHoldTimeoutRef.current = null;
     }
+
+    // Release capture
+    try {
+      if (topicPointerTargetRef.current && topicPointerIdRef.current != null) {
+        topicPointerTargetRef.current.releasePointerCapture?.(topicPointerIdRef.current);
+      }
+    } catch (_) {}
+
+    // If we were dragging — suppress the click that may fire on iOS
+    if (topicDragActivatedRef.current && topicDragMovedRef.current) {
+      suppressNextTopicClickRef.current = Date.now();
+    }
+
+    // Apply reorder ONCE on release (iOS Safari can lose pointer events if DOM reorders during move)
+    if (topicDragActivatedRef.current) {
+      const fromId = topicStartIdRef.current;
+      const toId = topicHoverIdRef.current;
+
+      if (fromId != null && toId != null && fromId !== toId) {
+        const fromIdx = topics.findIndex(t => t.id === fromId);
+        const toIdx = topics.findIndex(t => t.id === toId);
+        if (fromIdx !== -1 && toIdx !== -1) {
+          const newTopics = [...topics];
+          const [moved] = newTopics.splice(fromIdx, 1);
+          newTopics.splice(toIdx, 0, moved);
+          updateTopics(newTopics);
+        }
+      }
+    }
+
+    topicPointerIdRef.current = null;
+    topicPointerTargetRef.current = null;
+    topicDragActivatedRef.current = false;
+    topicDragMovedRef.current = false;
+    topicStartIdRef.current = null;
+    topicHoverIdRef.current = null;
+
+    setPointerDownTopic(null);
+    setPointerDownTime(null);
+    setTouchDragTopicId(null);
+    setTouchDragOverTopicId(null);
   };
 
   // Drag and drop для карточек слов
   const handleCardDragStart = (e, cardIndex) => {
+    // Don't start drag when user interacts with the delete button
+    if (e.target && e.target.closest && e.target.closest('button')) {
+      e.preventDefault();
+      return;
+    }
     setDraggedCardIndex(cardIndex);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
@@ -2045,14 +2141,21 @@ export default function FrenchFlashCardsApp() {
     setDragOverCardIndex(null);
   };
 
+
+  const handleCardDragEnd = () => {
+    setDraggedCardIndex(null);
+    setDragOverCardIndex(null);
+  };
+
   // ========== MOBILE LONG-PRESS DRAG (WORD CARDS LIST) ==========
-  const WORD_CARD_HOLD_MS = 260;
+  const WORD_CARD_HOLD_MS = 140;
   const wordCardHoldTimeoutRef = useRef(null);
   const wordCardPointerIdRef = useRef(null);
   const wordCardPointerTargetRef = useRef(null);
   const wordCardScrollBlockerRef = useRef(null);
   const wordCardStartIndexRef = useRef(null);
   const wordCardHoverIndexRef = useRef(null);
+  const wordCardStartYRef = useRef(null);
   // Use the same options object for add/remove on iOS Safari reliability
   const WORD_CARD_TOUCHMOVE_OPTIONS = useRef({ passive: false });
 
@@ -2082,6 +2185,7 @@ export default function FrenchFlashCardsApp() {
     setIsTouchWordCardDragging(false);
     setTouchDraggedWordCardIndex(null);
     setTouchDragOverWordCardIndex(null);
+    wordCardStartYRef.current = null;
     // Ensure we don't keep pointer captured (iOS can "stick" gestures)
     try {
       if (wordCardPointerTargetRef.current && wordCardPointerIdRef.current != null) {
@@ -2115,6 +2219,7 @@ export default function FrenchFlashCardsApp() {
     // Start hold timer (allow normal scroll until drag actually activates)
     wordCardPointerIdRef.current = e.pointerId;
     wordCardPointerTargetRef.current = e.currentTarget;
+    wordCardStartYRef.current = e.clientY;
     setTouchDraggedWordCardIndex(cardIndex);
 
     // Track original index and current hover target (commit reorder on release for iOS stability)
@@ -2134,7 +2239,20 @@ export default function FrenchFlashCardsApp() {
 
   const handleWordCardPointerMove = (e) => {
     if (e.pointerType !== 'touch') return;
-    if (!isTouchWordCardDragging) return;
+
+    // Before long-press activates, allow scroll and cancel if finger moves (prevents accidental drags)
+    if (!isTouchWordCardDragging) {
+      const dy = Math.abs(e.clientY - (wordCardStartYRef.current ?? e.clientY));
+      if (dy > 12) {
+        if (wordCardHoldTimeoutRef.current) {
+          clearTimeout(wordCardHoldTimeoutRef.current);
+          wordCardHoldTimeoutRef.current = null;
+        }
+        cleanupWordCardTouchDrag();
+      }
+      return;
+    }
+
     if (touchDraggedWordCardIndex === null) return;
     if (!currentTopic) return;
 
@@ -2607,7 +2725,12 @@ export default function FrenchFlashCardsApp() {
                         handleTopicPointerMove(e, topic.id);
                       }}
                       onPointerUp={handleTopicPointerUp}
+                      onPointerCancel={handleTopicPointerUp}
                       onClick={() => {
+                        // If a drag just happened, iOS may still fire a click after pointerup
+                        if (Date.now() - (suppressNextTopicClickRef.current || 0) < 450) {
+                          return;
+                        }
                         setCurrentTopic(topic);
                         setCurrentCardIndex(0);
                         setFlipped(false);
@@ -4206,6 +4329,12 @@ export default function FrenchFlashCardsApp() {
                   <div
                     key={idx}
                     data-word-card-index={idx}
+                    draggable
+                    onDragStart={(e) => handleCardDragStart(e, idx)}
+                    onDragOver={(e) => handleCardDragOver(e, idx)}
+                    onDragLeave={handleCardDragLeave}
+                    onDrop={(e) => handleCardDrop(e, idx)}
+                    onDragEnd={handleCardDragEnd}
                     onPointerDown={(e) => handleWordCardPointerDown(e, idx)}
                     onPointerMove={handleWordCardPointerMove}
                     onPointerUp={handleWordCardPointerUp}
@@ -4306,441 +4435,6 @@ export default function FrenchFlashCardsApp() {
         )}
       </div>
     </div>
-
-    {/* API Key Modal on Topic Page */}
-    {showApiKeyModal && (
-        <div className="celebration-modal-overlay" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}>
-          <div className="celebration-modal-content" style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '24px',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '32px',
-            boxSizing: 'border-box',
-            minHeight: '600px',
-          }}>
-            {/* API Key Icon */}
-            <div style={{ marginBottom: '32px', fontSize: '80px' }}>
-              🔑
-            </div>
-
-            {/* Title */}
-            <h1 className="celebration-modal-title" style={{
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '30px',
-              fontWeight: '500',
-              lineHeight: '38px',
-              letterSpacing: '0',
-              marginBottom: '12px',
-              color: '#000000',
-              textAlign: 'center',
-            }}>
-              Gemini API Key
-            </h1>
-
-            {/* Subtitle */}
-            <p style={{
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '16px',
-              fontWeight: '400',
-              lineHeight: '26px',
-              color: 'rgba(0, 0, 0, 0.6)',
-              marginBottom: '24px',
-            }}>
-              This app needs a Gemini API Key to translate and analyze.
-            </p>
-
-            {/* API Key Input + Error Wrapper */}
-            <div style={{
-              marginBottom: '32px',
-              width: '100%',
-            }}>
-              {/* Input + Error Container */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-              }}>
-                {/* Input Row */}
-                <div className="api-key-input-wrapper" style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                }}>
-                  {/* Icon */}
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <svg width="24" height="24" viewBox="0 -960 960 960" fill="#000000">
-                      <path d="M280-400q-33 0-56.5-23.5T200-480q0-33 23.5-56.5T280-560q33 0 56.5 23.5T360-480q0 33-23.5 56.5T280-400Zm0 160q-100 0-170-70T40-480q0-100 70-170t170-70q67 0 121.5 33t86.5 87h352l120 120-180 180-80-60-80 60-85-60h-47q-32 54-86.5 87T280-240Zm0-80q56 0 98.5-34t56.5-86h125l58 41 82-61 71 55 75-75-40-40H435q-14-52-56.5-86T280-640q-66 0-113 47t-47 113q0 66 47 113t113 47Z"/>
-                    </svg>
-                  </div>
-                  
-                  {/* Input Container */}
-                  <div style={{
-                    flex: 1,
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    {/* Input */}
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={tempApiKey}
-                      onChange={(e) => {
-                        setTempApiKey(e.target.value);
-                        setApiKeyError('');
-                      }}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          const error = validateApiKey(tempApiKey);
-                          if (!error) {
-                            localStorage.setItem('gemini_api_key', tempApiKey);
-                            setApiKey(tempApiKey);
-                            setShowApiKeyModal(false);
-                            setApiKeyError('');
-                            setTempApiKey('');
-                            setShowPassword(false);
-                          } else {
-                            setApiKeyError(error);
-                          }
-                        }
-                      }}
-                      placeholder="Starts with Alza"
-                      style={{
-                        width: '100%',
-                        height: '56px',
-                        padding: '0 50px 0 20px',
-                        border: apiKeyError ? '1.5px solid #DC2626' : '1.5px solid rgba(0, 0, 0, 0.12)',
-                        boxSizing: 'border-box',
-                        fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                        fontSize: '16px',
-                        fontWeight: '500',
-                        lineHeight: '24px',
-                        borderRadius: '12px',
-                        backgroundColor: '#ffffff',
-                        color: '#000000',
-                        colorScheme: 'light',
-                        outline: 'none',
-                      }}
-                    />
-                    
-                    {/* Show/Hide Password Button - Inside Input */}
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: '32px',
-                        height: '32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                        transition: 'opacity 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => e.target.style.opacity = '0.6'}
-                      onMouseLeave={(e) => e.target.style.opacity = '1'}
-                    >
-                      {showPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#000000">
-                          <path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z"/>
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#000000">
-                          <path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/>
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Error message */}
-                {apiKeyError && (
-                  <div style={{
-                    fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    lineHeight: '20px',
-                    color: '#DC2626',
-                    textAlign: 'left',
-                  }}>
-                    {apiKeyError}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Buttons */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              width: '100%',
-              marginTop: 'auto',
-            }}>
-              {/* Save Button */}
-              <button
-                onClick={() => {
-                  const error = validateApiKey(tempApiKey);
-                  if (error) {
-                    setApiKeyError(error);
-                  } else {
-                    localStorage.setItem('gemini_api_key', tempApiKey);
-                    setApiKey(tempApiKey);
-                    setShowApiKeyModal(false);
-                    setApiKeyError('');
-                    setTempApiKey('');
-                    setShowPassword(false);
-                    hideKeyboard();
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  height: '56px',
-                  padding: '0 20px',
-                  backgroundColor: '#000000',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  lineHeight: '24px',
-                  cursor: 'pointer',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  transition: 'background-color 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#333333'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#000000'}
-              >
-                Save this key
-              </button>
-
-              {/* Cancel Button */}
-              <button
-                onClick={() => {
-                  setShowApiKeyModal(false);
-                  setTempApiKey('');
-                  setApiKeyError('');
-                  setShowPassword(false);
-                  hideKeyboard();
-                }}
-                style={{
-                  width: '100%',
-                  height: '56px',
-                  padding: '0 20px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.07)',
-                  color: '#000000',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.12)'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.07)'}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    {/* Login Modal on Topic Page */}
-    {showLoginModal && (
-        <div className="celebration-modal-overlay" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}>
-          <div className="celebration-modal-content" style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '24px',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '32px',
-            boxSizing: 'border-box',
-            minHeight: '600px',
-          }}>
-            {/* Login Icon */}
-            <div style={{ marginBottom: '32px', fontSize: '80px' }}>
-              👤
-            </div>
-
-            {/* Title */}
-            <h2 className="celebration-modal-title" style={{
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '30px',
-              fontWeight: '500',
-              lineHeight: '38px',
-              letterSpacing: '0',
-              marginBottom: '12px',
-              color: '#000000',
-              textAlign: 'center',
-            }}>
-              Login
-            </h2>
-
-            {/* Subtitle */}
-            <p style={{
-              fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-              fontSize: '16px',
-              fontWeight: '400',
-              lineHeight: '26px',
-              color: 'rgba(0, 0, 0, 0.6)',
-              marginBottom: '24px',
-            }}>
-              Enter your ID to save and sync your progress.
-            </p>
-
-            {/* User ID Input */}
-            <div style={{
-              marginBottom: '32px',
-              width: '100%',
-            }}>
-              <input
-                type="text"
-                value={tempLoginUserId}
-                onChange={(e) => setTempLoginUserId(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    if (tempLoginUserId.trim()) {
-                      setLoginUserId(tempLoginUserId);
-                      localStorage.setItem('sync_user_id', tempLoginUserId);
-                      setShowLoginModal(false);
-                      setTempLoginUserId('');
-                    }
-                  }
-                }}
-                placeholder="Enter your ID"
-                style={{
-                  width: '100%',
-                  height: '56px',
-                  padding: '0 20px',
-                  border: '1.5px solid rgba(0, 0, 0, 0.12)',
-                  boxSizing: 'border-box',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  lineHeight: '24px',
-                  borderRadius: '12px',
-                  backgroundColor: '#ffffff',
-                  color: '#000000',
-                  colorScheme: 'light',
-                  outline: 'none',
-                }}
-              />
-            </div>
-
-            {/* Buttons */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              width: '100%',
-              marginTop: 'auto',
-            }}>
-              {/* Login Button */}
-              <button
-                onClick={() => {
-                  if (tempLoginUserId.trim()) {
-                    setLoginUserId(tempLoginUserId);
-                    localStorage.setItem('sync_user_id', tempLoginUserId);
-                    setShowLoginModal(false);
-                    setTempLoginUserId('');
-                    hideKeyboard();
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  height: '56px',
-                  padding: '0 20px',
-                  backgroundColor: '#000000',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  lineHeight: '24px',
-                  cursor: 'pointer',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  transition: 'background-color 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#333333'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#000000'}
-              >
-                Login
-              </button>
-
-              {/* Cancel Button */}
-              <button
-                onClick={() => {
-                  setShowLoginModal(false);
-                  setTempLoginUserId('');
-                }}
-                style={{
-                  width: '100%',
-                  height: '56px',
-                  padding: '0 20px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.07)',
-                  color: '#000000',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.12)'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.07)'}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
