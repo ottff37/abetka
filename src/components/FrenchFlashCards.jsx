@@ -1292,6 +1292,31 @@ export default function FrenchFlashCardsApp() {
       setShowApiKeyModal(true);
     }
   }, []);
+  
+  // Close modals with Escape key
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      if (showApiKeyModal) {
+        e.preventDefault();
+        closeApiKeyModal();
+        return;
+      }
+      if (showLoginModal) {
+        e.preventDefault();
+        closeLoginModal();
+        return;
+      }
+      if (showCelebrationModal) {
+        e.preventDefault();
+        setShowCelebrationModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showApiKeyModal, showLoginModal, showCelebrationModal]);
+
 
   // Глобальные обработчики для drag-drop на странице
   useEffect(() => {
@@ -1446,6 +1471,22 @@ export default function FrenchFlashCardsApp() {
       activeElement.blur();
     }
   };
+  
+  // Close modals by ESC / outside click (same behavior as Cancel buttons)
+  const closeApiKeyModal = () => {
+    setShowApiKeyModal(false);
+    setTempApiKey('');
+    setApiKeyError('');
+    setShowPassword(false);
+    hideKeyboard();
+  };
+
+  const closeLoginModal = () => {
+    setShowLoginModal(false);
+    setTempLoginUserId('');
+    hideKeyboard();
+  };
+
 
   // Функция экспорта всех тем
   // Загрузка всех тем
@@ -2671,7 +2712,7 @@ export default function FrenchFlashCardsApp() {
   const renderGlobalModals = () => (
     <>
       {showApiKeyModal && (
-        <div className="celebration-modal-overlay" style={{
+        <div className="celebration-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) closeApiKeyModal(); }} style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -2909,11 +2950,7 @@ export default function FrenchFlashCardsApp() {
               {/* Cancel Button */}
               <button
                 onClick={() => {
-                  setShowApiKeyModal(false);
-                  setTempApiKey('');
-                  setApiKeyError('');
-                  setShowPassword(false);
-                  hideKeyboard();
+                  closeApiKeyModal();
                 }}
                 style={{
                   width: '100%',
@@ -2945,7 +2982,7 @@ export default function FrenchFlashCardsApp() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div style={{
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) closeLoginModal(); }} style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -3540,7 +3577,7 @@ export default function FrenchFlashCardsApp() {
 
       {/* Celebration Modal */}
       {showCelebrationModal && (
-        <div className="celebration-modal-overlay" style={{
+        <div className="celebration-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowCelebrationModal(false); }} style={{
           position: 'fixed',
           top: 0,
           left: 0,
