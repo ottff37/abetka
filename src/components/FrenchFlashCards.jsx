@@ -4414,6 +4414,21 @@ export default function FrenchFlashCardsApp() {
 
                     {/* Delete button */}
                     <button
+                      // Drag should work anywhere on the card EXCEPT the delete button.
+                      // On iOS, pointerdown on the button can bubble and start the long-press drag on the parent.
+                      // We stop propagation on pointer/touch events to keep delete fully clickable.
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onPointerCancel={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
