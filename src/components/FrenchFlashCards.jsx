@@ -17,45 +17,7 @@ if (typeof document !== 'undefined') {
   link.href = 'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap';
   link.rel = 'stylesheet';
   document.head.appendChild(link);
-
-  // === iOS / Safari icons (favicon + Home Screen) ===
-  // Note: files must exist in /public: /favicon.ico, /apple-touch-icon.png, /site.webmanifest
-  const ensureLink = ({ rel, href, sizes, type }) => {
-    const selector = `link[rel="${rel}"]${sizes ? `[sizes="${sizes}"]` : ''}`;
-    let el = document.head.querySelector(selector);
-    if (!el) {
-      el = document.createElement('link');
-      el.rel = rel;
-      if (sizes) el.sizes = sizes;
-      if (type) el.type = type;
-      document.head.appendChild(el);
-    }
-    el.href = href;
-    return el;
-  };
-
-  ensureLink({ rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' });
-  ensureLink({ rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' });
-  ensureLink({ rel: 'manifest', href: '/site.webmanifest' });
-
-  const ensureMeta = ({ name, content, property }) => {
-    const selector = name ? `meta[name="${name}"]` : `meta[property="${property}"]`;
-    let el = document.head.querySelector(selector);
-    if (!el) {
-      el = document.createElement('meta');
-      if (name) el.setAttribute('name', name);
-      if (property) el.setAttribute('property', property);
-      document.head.appendChild(el);
-    }
-    el.setAttribute('content', content);
-    return el;
-  };
-
-  // Recommended for PWA-ish appearance; safe even if not used
-  ensureMeta({ name: 'theme-color', content: '#F6F2F2' });
-  ensureMeta({ name: 'apple-mobile-web-app-capable', content: 'yes' });
-  ensureMeta({ name: 'apple-mobile-web-app-status-bar-style', content: 'default' });
-
+  
   // Add CSS for back button
   const style = document.createElement('style');
   style.textContent = `
